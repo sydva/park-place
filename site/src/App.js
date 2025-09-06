@@ -10,6 +10,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import CompleteRegistration from './components/CompleteRegistration';
 import EditProfile from './components/EditProfile';
 import AuthLayout from './components/AuthLayout';
+import Terms from './components/Terms';
+import Privacy from './components/Privacy';
 
 function AppRoutes() {
   const { isSignedIn, isLoaded } = useAuth();
@@ -52,6 +54,8 @@ function AppRoutes() {
         path="/edit-profile" 
         element={<ProtectedRoute><EditProfile /></ProtectedRoute>} 
       />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/privacy" element={<Privacy />} />
       <Route 
         path="/report-license-plate" 
         element={<ProtectedRoute><ReportLicensePlate /></ProtectedRoute>} 

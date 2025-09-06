@@ -5,12 +5,12 @@ from pathlib import Path as FilePath
 from typing import Annotated, Any, TypedDict
 
 import anyio
-from fastapi import FastAPI, File, HTTPException, Path, Query, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Path, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
-from backend import database as db
+import database as db
 
 
 # TypedDict for booking data
@@ -44,9 +44,8 @@ DEV_USER: dict[str, Any] = {
 
 class UserRegister(BaseModel):
     email: str = Field(..., min_length=1)
-    password: str = Field(..., min_length=1)
     name: str = Field(..., min_length=1)
-    user_type: str = "renter"  # renter, lister, both
+    user_type: str = "parker"  # parker, provider, both
     car_license_plate: str | None = None
 
 
@@ -98,6 +97,7 @@ class ParkingSpaceResponse(BaseModel):
     tags: list[str]
     rating: float = 0.0
     is_available: bool = True
+    requires_verification: bool = False
     image_url: str | None = None
     created_at: str  # ISO format string with Z suffix
 
@@ -142,6 +142,46 @@ class ReportLicensePlate(BaseModel):
     space_id: int | None = None
     description: str
     reporter_email: str | None = None
+
+
+class VerificationSubmission(BaseModel):
+    user_email: str
+
+
+class VerificationStatus(BaseModel):
+    user_email: str
+    status: str  # pending, verified, rejected
+    profile_photo_url: str | None = None
+    id_document_url: str | None = None 
+    vehicle_registration_url: str | None = None
+    verification_notes: str | None = None
+    verified_at: str | None = None
+    created_at: str
+
+
+class VerificationStatusUpdate(BaseModel):
+    status: str  # verified, rejected
+    verification_notes: str | None = None
+    verified_by: str | None = None
+
+
+class CreateUserRating(BaseModel):
+    ratee_id: int
+    rating: int = Field(..., ge=1, le=5)
+    description: str | None = None
+
+
+class CreatePlaceRating(BaseModel):
+    place_id: int
+    rating: int = Field(..., ge=1, le=5)
+    description: str | None = None
+
+
+class RatingResponse(BaseModel):
+    id: int
+    rating: int
+    description: str | None
+    created_at: str
 
 
 def get_current_user() -> dict[str, Any]:
@@ -310,6 +350,7 @@ async def get_user_profile(email: str):
             "license_plate": parker["license_plate"],
             "license_plate_state": parker["license_plate_state"],
             "is_active": parker["is_active"],
+            "is_verified": parker.get("is_verified", False),
             "created_at": parker["created_at"],
         }
 
@@ -382,6 +423,7 @@ async def get_spaces(limit: Annotated[int, Query(ge=1, le=10000)] = 100):
             tags=[],  # TODO: Add tags system
             rating=0.0,
             is_available=True,
+            requires_verification=place.get("requires_verification", False),
             image_url=None,
             created_at=place["created_at"] + "Z"
             if not place["created_at"].endswith("Z")
@@ -416,6 +458,7 @@ async def search_spaces(query: SearchQuery):
                 tags=[],
                 rating=0.0,
                 is_available=True,
+                requires_verification=place.get("requires_verification", False),
                 image_url=None,
                 created_at=place["created_at"] + "Z"
                 if not place["created_at"].endswith("Z")
@@ -468,6 +511,7 @@ async def create_space(space: ParkingSpace):
         tags=space.tags,
         rating=0.0,
         is_available=True,
+        requires_verification=False,  # New spaces don't require verification by default
         image_url=space.image_url,
         created_at=place["created_at"] + "Z"
         if not place["created_at"].endswith("Z")
@@ -496,6 +540,7 @@ async def get_space(space_id: Annotated[int, Path(ge=0, le=2147483647)]):
         tags=[],
         rating=0.0,
         is_available=True,
+        requires_verification=place.get("requires_verification", False),
         image_url=None,
         created_at=place["created_at"] + "Z"
         if not place["created_at"].endswith("Z")
@@ -549,6 +594,7 @@ async def update_space(
         tags=space.tags,
         rating=0.0,
         is_available=True,
+        requires_verification=updated_place.get("requires_verification", False),
         image_url=space.image_url,
         created_at=updated_place["created_at"] + "Z"
         if not updated_place["created_at"].endswith("Z")
@@ -798,6 +844,155 @@ async def get_reports():
         raise HTTPException(status_code=500, detail="Failed to get reports")
 
 
+@app.post("/verification/upload", response_model=dict)
+async def upload_verification_documents(
+    profile_photo: UploadFile = File(...),
+    id_document: UploadFile = File(...),
+    vehicle_registration: UploadFile = File(...),
+    user_email: str = Form(...),
+):
+    """Upload verification documents for identity verification"""
+    try:
+        # Validate file types (basic validation)
+        allowed_types = ["image/jpeg", "image/jpg", "image/png", "application/pdf"]
+        
+        for file, name in [(profile_photo, "profile photo"), (id_document, "ID document"), (vehicle_registration, "vehicle registration")]:
+            if file.content_type not in allowed_types:
+                raise HTTPException(status_code=400, detail=f"Invalid file type for {name}. Only JPEG, PNG, and PDF allowed.")
+        
+        # Create unique filenames with timestamp
+        import uuid
+        timestamp = int(time.time())
+        
+        def create_filename(original_name: str, doc_type: str) -> str:
+            ext = original_name.split('.')[-1] if '.' in original_name else 'jpg'
+            return f"{doc_type}_{user_email.replace('@', '_')}_{timestamp}_{uuid.uuid4().hex[:8]}.{ext}"
+        
+        # Save files
+        profile_photo_filename = create_filename(profile_photo.filename or "photo.jpg", "profile")
+        id_document_filename = create_filename(id_document.filename or "id.jpg", "id")
+        vehicle_reg_filename = create_filename(vehicle_registration.filename or "registration.jpg", "vehicle")
+        
+        # Save files to upload directory
+        for file, filename in [
+            (profile_photo, profile_photo_filename),
+            (id_document, id_document_filename),
+            (vehicle_registration, vehicle_reg_filename)
+        ]:
+            file_path = UPLOAD_DIR / filename
+            contents = await file.read()
+            with open(file_path, "wb") as f:
+                f.write(contents)
+        
+        # Create verification record in database
+        verification_id = db.create_user_verification(
+            user_email=user_email,
+            profile_photo_url=f"/uploads/{profile_photo_filename}",
+            id_document_url=f"/uploads/{id_document_filename}",
+            vehicle_registration_url=f"/uploads/{vehicle_reg_filename}"
+        )
+        
+        # Send notification to user
+        db.create_notification(
+            user_email=user_email,
+            title="Verification Documents Submitted",
+            message="Your verification documents have been submitted for review. You will be notified once the review is complete.",
+            notification_type="info"
+        )
+        
+        return {
+            "message": "Verification documents uploaded successfully",
+            "verification_id": verification_id,
+            "status": "pending"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error uploading verification documents: {e}")
+        raise HTTPException(status_code=500, detail="Failed to upload verification documents")
+
+
+@app.get("/verification/status", response_model=VerificationStatus)
+async def get_verification_status(email: str):
+    """Get user's verification status"""
+    try:
+        verification = db.get_user_verification(email)
+        if not verification:
+            # Return default status for users who haven't started verification
+            return VerificationStatus(
+                user_email=email,
+                status="not_started",
+                created_at=datetime.now().isoformat()
+            )
+        
+        return VerificationStatus(
+            user_email=verification["user_email"],
+            status=verification["status"],
+            profile_photo_url=verification.get("profile_photo_url"),
+            id_document_url=verification.get("id_document_url"),
+            vehicle_registration_url=verification.get("vehicle_registration_url"),
+            verification_notes=verification.get("verification_notes"),
+            verified_at=verification.get("verified_at"),
+            created_at=verification["created_at"]
+        )
+    except Exception as e:
+        print(f"Error getting verification status: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get verification status")
+
+
+@app.put("/verification/admin/update-status")
+async def update_verification_status_admin(
+    user_email: str,
+    update: VerificationStatusUpdate
+):
+    """Update verification status (admin only - simplified for MVP)"""
+    try:
+        success = db.update_verification_status(
+            user_email=user_email,
+            status=update.status,
+            verified_by=update.verified_by or "admin",
+            verification_notes=update.verification_notes
+        )
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="Verification record not found")
+        
+        # Send notification to user
+        if update.status == "verified":
+            notification_title = "Verification Approved"
+            notification_message = "Congratulations! Your identity has been verified. You now have access to verified-only parking spaces."
+        else:
+            notification_title = "Verification Rejected"
+            notification_message = f"Your verification was not approved. Reason: {update.verification_notes or 'Please resubmit with clearer documents.'}"
+        
+        db.create_notification(
+            user_email=user_email,
+            title=notification_title,
+            message=notification_message,
+            notification_type="info" if update.status == "verified" else "warning"
+        )
+        
+        return {"message": f"Verification status updated to {update.status}"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error updating verification status: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update verification status")
+
+
+@app.get("/verification/admin/pending")
+async def get_pending_verifications_admin():
+    """Get all pending verifications (admin only)"""
+    try:
+        pending = db.get_pending_verifications()
+        return pending
+    except Exception as e:
+        print(f"Error getting pending verifications: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get pending verifications")
+
+
 @app.get("/notifications")
 async def get_user_notifications(email: str):
     """Get notifications for a user"""
@@ -831,6 +1026,75 @@ async def mark_notification_read(notification_id: int):
     except Exception as e:
         print(f"Error marking notification as read: {e}")
         raise HTTPException(status_code=500, detail="Failed to mark notification as read")
+
+
+# Rating endpoints
+@app.post("/ratings/users", response_model=dict)
+async def create_user_rating(rating: CreateUserRating):
+    """Create a rating for a user"""
+    try:
+        current_user = get_current_user()
+        rating_id = db.create_user_rating(
+            rater_id=current_user["id"],
+            ratee_id=rating.ratee_id,
+            rating=rating.rating,
+            description=rating.description
+        )
+        return {"id": rating_id, "message": "User rating created successfully"}
+    except Exception as e:
+        if "UNIQUE constraint failed" in str(e):
+            raise HTTPException(status_code=409, detail="You have already rated this user")
+        print(f"Error creating user rating: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create user rating")
+
+
+@app.post("/ratings/places", response_model=dict)
+async def create_place_rating(rating: CreatePlaceRating):
+    """Create a rating for a place"""
+    try:
+        current_user = get_current_user()
+        rating_id = db.create_place_rating(
+            user_id=current_user["id"],
+            place_id=rating.place_id,
+            rating=rating.rating,
+            description=rating.description
+        )
+        return {"id": rating_id, "message": "Place rating created successfully"}
+    except Exception as e:
+        if "UNIQUE constraint failed" in str(e):
+            raise HTTPException(status_code=409, detail="You have already rated this place")
+        print(f"Error creating place rating: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create place rating")
+
+
+@app.get("/ratings/places/{place_id}")
+async def get_place_ratings(place_id: int):
+    """Get all ratings for a specific place"""
+    try:
+        ratings = db.get_place_ratings(place_id)
+        return {
+            "ratings": ratings,
+            "count": len(ratings),
+            "average": db.get_place_average_rating(place_id)
+        }
+    except Exception as e:
+        print(f"Error getting place ratings: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get place ratings")
+
+
+@app.get("/ratings/users/{user_id}")
+async def get_user_ratings(user_id: int):
+    """Get all ratings for a specific user"""
+    try:
+        ratings = db.get_user_ratings_by_ratee(user_id)
+        return {
+            "ratings": ratings,
+            "count": len(ratings),
+            "average": db.get_user_average_rating(user_id)
+        }
+    except Exception as e:
+        print(f"Error getting user ratings: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get user ratings")
 
 
 if __name__ == "__main__":

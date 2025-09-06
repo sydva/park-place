@@ -115,6 +115,17 @@
   background: #21a9c7;
 }
 
+.verify-button {
+  background: #28a745 !important;
+  color: white !important;
+  border: 2px solid #28a745;
+}
+
+.verify-button:hover {
+  background: #218838 !important;
+  border-color: #218838;
+}
+
 .logout-button {
   width: 100%;
   background: #ff4757;

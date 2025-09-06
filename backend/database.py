@@ -67,31 +67,23 @@ def init_database():
             )
         """)
 
-        # Create indexes for better performance
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)"
-        )
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_users_license_plate ON users(license_plate)"
-        )
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_places_latitude ON places(latitude)"
-        )
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_places_longitude ON places(longitude)"
-        )
-
-<<<<<<< HEAD
-        # Add price_per_hour column if it doesn't exist (for existing databases)
-        cursor = conn.cursor()
-        cursor.execute("PRAGMA table_info(places)")
-        columns = [column[1] for column in cursor.fetchall()]
-        if "price_per_hour" not in columns:
-            conn.execute(
-                "ALTER TABLE places ADD COLUMN price_per_hour DECIMAL(10, 2) DEFAULT 0"
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS user_verifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_email TEXT NOT NULL UNIQUE,
+                status TEXT DEFAULT 'pending',
+                profile_photo_url TEXT,
+                id_document_url TEXT,
+                vehicle_registration_url TEXT,
+                verification_notes TEXT,
+                verified_at TIMESTAMP,
+                verified_by TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_email) REFERENCES users (email)
             )
-=======
+        """)
+
         conn.execute("""
             CREATE TABLE IF NOT EXISTS user_ratings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -118,12 +110,38 @@ def init_database():
             )
         """)
 
+
+        # Create indexes for better performance
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_users_license_plate ON users(license_plate)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_places_latitude ON places(latitude)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_places_longitude ON places(longitude)"
+        )
+        
         # Create indexes for rating tables
         conn.execute("CREATE INDEX IF NOT EXISTS idx_user_ratings_rater ON user_ratings(rater_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_user_ratings_ratee ON user_ratings(ratee_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_place_ratings_user ON place_ratings(user_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_place_ratings_place ON place_ratings(place_id)")
->>>>>>> 7288ab3 (consolidate parkers and providers into users. Add ratings.)
+
+        # Add price_per_hour column if it doesn't exist (for existing databases)
+        cursor = conn.cursor()
+        
+        # Add price_per_hour column to places
+        cursor.execute("PRAGMA table_info(places)")
+        places_columns = [column[1] for column in cursor.fetchall()]
+        if "price_per_hour" not in places_columns:
+            conn.execute(
+                "ALTER TABLE places ADD COLUMN price_per_hour DECIMAL(10, 2) DEFAULT 0"
+            )
 
         conn.commit()
 
@@ -188,26 +206,8 @@ def get_user_by_email(email: str) -> dict[str, Any] | None:
         return None
 
 
-<<<<<<< HEAD
-def get_parker_by_license_plate(license_plate: str) -> dict[str, Any] | None:
-    """Get parker by license plate"""
-    with get_db() as conn:
-        cursor = conn.execute(
-            """
-            SELECT * FROM parkers WHERE license_plate = ?
-        """,
-            (license_plate,),
-        )
-        row = cursor.fetchone()
-        return dict(row) if row else None
-
-
-def get_provider_by_email(email: str) -> dict[str, Any] | None:
-    """Get provider by email"""
-=======
 def get_user_by_id(user_id: int) -> dict[str, Any] | None:
     """Get user by ID with rating statistics"""
->>>>>>> 7288ab3 (consolidate parkers and providers into users. Add ratings.)
     with get_db() as conn:
         cursor = conn.execute(
             """
@@ -221,103 +221,20 @@ def get_user_by_id(user_id: int) -> dict[str, Any] | None:
         """,
             (user_id,),
         )
-        row = cursor.fetchone()
-<<<<<<< HEAD
-        return dict(row) if row else None
-
-
-def get_parker_by_id(parker_id: int) -> dict[str, Any] | None:
-    """Get parker by ID"""
-    with get_db() as conn:
-        cursor = conn.execute(
-            """
-            SELECT * FROM parkers WHERE id = ?
-        """,
-            (parker_id,),
-        )
-        row = cursor.fetchone()
-        return dict(row) if row else None
-
-
-def update_parker_profile(email: str, username: str, license_plate: str | None = None) -> bool:
-    """Update parker profile fields"""
-    try:
-        with get_db() as conn:
-            # Parse license plate to extract state and number
-            license_plate_state = None
-            license_plate_number = None
-            
-            if license_plate and len(license_plate.strip()) > 0:
-                license_plate = license_plate.strip().upper()
-                if len(license_plate) >= 2:
-                    # Assume first 2 characters are state if they're letters
-                    potential_state = license_plate[:2]
-                    if potential_state.isalpha():
-                        license_plate_state = potential_state
-                        license_plate_number = license_plate[2:]
-                    else:
-                        license_plate_number = license_plate
-                else:
-                    license_plate_number = license_plate
-            
-            cursor = conn.execute(
-                """
-                UPDATE parkers 
-                SET username = ?, license_plate = ?, license_plate_state = ? 
-                WHERE email = ?
-                """,
-                (username, license_plate_number, license_plate_state, email),
-            )
-            return cursor.rowcount > 0
-    except Exception as e:
-        print(f"Error updating parker profile: {e}")
-        return False
-
-
-def get_provider_by_id(provider_id: int) -> dict[str, Any] | None:
-    """Get provider by ID"""
-    with get_db() as conn:
-        cursor = conn.execute(
-            """
-            SELECT * FROM providers WHERE id = ?
-        """,
-            (provider_id,),
-        )
-        row = cursor.fetchone()
-        return dict(row) if row else None
-
-
-def create_provider(email: str, username: str, hashed_password: str) -> int:
-    """Create a new provider and return the provider ID"""
-    with get_db() as conn:
-        cursor = conn.execute(
-            """
-            INSERT INTO providers (email, username, hashed_password)
-            VALUES (?, ?, ?)
-        """,
-            (email, username, hashed_password),
-        )
-        return cursor.lastrowid or 0
-=======
         if row:
             result = dict(row)
             # Convert to proper types
             result['average_rating'] = float(result['average_rating']) if result['rating_count'] > 0 else None
             return result
         return None
->>>>>>> 7288ab3 (consolidate parkers and providers into users. Add ratings.)
 
 
 # Place CRUD operations
 def create_place(
     added_by: int,
-<<<<<<< HEAD
     title: str | None = None,
     description: str | None = None,
-    owned_by: int | None = None,
-=======
     creator_is_owner: bool = True,
->>>>>>> 7288ab3 (consolidate parkers and providers into users. Add ratings.)
     latitude: float | None = None,
     longitude: float | None = None,
     address: str | None = None,
@@ -327,28 +244,11 @@ def create_place(
     with get_db() as conn:
         cursor = conn.execute(
             """
-<<<<<<< HEAD
-            INSERT INTO places (title, description, added_by, owned_by,
+            INSERT INTO places (title, description, added_by, creator_is_owner,
                 latitude, longitude, address, price_per_hour)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
-            (
-                title,
-                description,
-                added_by,
-                owned_by,
-                latitude,
-                longitude,
-                address,
-                price_per_hour,
-            ),
-=======
-            INSERT INTO places (title, description, added_by, creator_is_owner,
-                latitude, longitude, address)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """,
-            (title, description, added_by, creator_is_owner, latitude, longitude, address),
->>>>>>> 7288ab3 (consolidate parkers and providers into users. Add ratings.)
+            (title, description, added_by, creator_is_owner, latitude, longitude, address, price_per_hour),
         )
         return cursor.lastrowid or 0
 
@@ -500,11 +400,8 @@ def update_place(place_id: int, **kwargs: Any) -> bool:
         "longitude",
         "address",
         "is_published",
-<<<<<<< HEAD
         "price_per_hour",
-=======
         "creator_is_owner",
->>>>>>> 7288ab3 (consolidate parkers and providers into users. Add ratings.)
     ]
     updates: list[str] = []
     params: list[Any] = []
@@ -564,7 +461,6 @@ def get_place_count() -> int:
         return cursor.fetchone()[0]
 
 
-<<<<<<< HEAD
 # License plate report operations
 def create_license_plate_report(
     license_plate: str, description: str, reporter_email: str | None = None, space_id: int | None = None
@@ -577,7 +473,10 @@ def create_license_plate_report(
             VALUES (?, ?, ?, ?)
         """,
             (license_plate, description, reporter_email, space_id),
-=======
+        )
+        return cursor.lastrowid or 0
+
+
 # User Rating CRUD operations
 def create_user_rating(
     rater_id: int,
@@ -593,12 +492,10 @@ def create_user_rating(
             VALUES (?, ?, ?, ?)
         """,
             (rater_id, ratee_id, rating, description),
->>>>>>> 7288ab3 (consolidate parkers and providers into users. Add ratings.)
         )
         return cursor.lastrowid or 0
 
 
-<<<<<<< HEAD
 def get_license_plate_reports(limit: int = 100) -> list[dict[str, Any]]:
     """Get all license plate reports"""
     with get_db() as conn:
@@ -609,7 +506,10 @@ def get_license_plate_reports(limit: int = 100) -> list[dict[str, Any]]:
             LIMIT ?
         """,
             (limit,),
-=======
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
 def get_user_ratings_by_ratee(ratee_id: int) -> list[dict[str, Any]]:
     """Get all ratings for a specific user (ratee)"""
     with get_db() as conn:
@@ -622,25 +522,10 @@ def get_user_ratings_by_ratee(ratee_id: int) -> list[dict[str, Any]]:
             ORDER BY ur.created_at DESC
         """,
             (ratee_id,),
->>>>>>> 7288ab3 (consolidate parkers and providers into users. Add ratings.)
         )
         return [dict(row) for row in cursor.fetchall()]
 
 
-<<<<<<< HEAD
-# Notification operations
-def create_notification(
-    user_email: str, title: str, message: str, notification_type: str = "info"
-) -> int:
-    """Create a new notification and return the notification ID"""
-    with get_db() as conn:
-        cursor = conn.execute(
-            """
-            INSERT INTO notifications (user_email, title, message, type)
-            VALUES (?, ?, ?, ?)
-        """,
-            (user_email, title, message, notification_type),
-=======
 def get_user_ratings_by_rater(rater_id: int) -> list[dict[str, Any]]:
     """Get all ratings given by a specific user (rater)"""
     with get_db() as conn:
@@ -694,12 +579,26 @@ def create_place_rating(
             VALUES (?, ?, ?, ?)
         """,
             (user_id, place_id, rating, description),
->>>>>>> 7288ab3 (consolidate parkers and providers into users. Add ratings.)
         )
         return cursor.lastrowid or 0
 
 
-<<<<<<< HEAD
+# Notification operations
+def create_notification(
+    user_email: str, title: str, message: str, notification_type: str = "info"
+) -> int:
+    """Create a new notification and return the notification ID"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO notifications (user_email, title, message, type)
+            VALUES (?, ?, ?, ?)
+        """,
+            (user_email, title, message, notification_type),
+        )
+        return cursor.lastrowid or 0
+
+
 def get_user_notifications(user_email: str, unread_only: bool = False) -> list[dict[str, Any]]:
     """Get notifications for a user"""
     with get_db() as conn:
@@ -735,7 +634,8 @@ def get_unread_notification_count(user_email: str) -> int:
             (user_email,),
         )
         return cursor.fetchone()[0]
-=======
+
+
 def get_place_ratings(place_id: int) -> list[dict[str, Any]]:
     """Get all ratings for a specific place"""
     with get_db() as conn:
@@ -802,4 +702,67 @@ def delete_place_rating(rating_id: int) -> bool:
     with get_db() as conn:
         cursor = conn.execute("DELETE FROM place_ratings WHERE id = ?", (rating_id,))
         return cursor.rowcount > 0
->>>>>>> 7288ab3 (consolidate parkers and providers into users. Add ratings.)
+
+
+# User verification operations
+def create_user_verification(
+    user_email: str,
+    profile_photo_url: str | None = None,
+    id_document_url: str | None = None,
+    vehicle_registration_url: str | None = None,
+) -> int:
+    """Create a new user verification record and return the verification ID"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO user_verifications (user_email, profile_photo_url, id_document_url, vehicle_registration_url)
+            VALUES (?, ?, ?, ?)
+        """,
+            (user_email, profile_photo_url, id_document_url, vehicle_registration_url),
+        )
+        return cursor.lastrowid or 0
+
+
+def get_user_verification(user_email: str) -> dict[str, Any] | None:
+    """Get user verification by email"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            SELECT * FROM user_verifications WHERE user_email = ?
+        """,
+            (user_email,),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def update_verification_status(
+    user_email: str,
+    status: str,
+    verified_by: str | None = None,
+    verification_notes: str | None = None,
+) -> bool:
+    """Update verification status"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            UPDATE user_verifications 
+            SET status = ?, verified_by = ?, verification_notes = ?, verified_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+            WHERE user_email = ?
+        """,
+            (status, verified_by, verification_notes, user_email),
+        )
+        return cursor.rowcount > 0
+
+
+def get_pending_verifications() -> list[dict[str, Any]]:
+    """Get all pending verifications"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            SELECT * FROM user_verifications 
+            WHERE status = 'pending'
+            ORDER BY created_at DESC
+        """
+        )
+        return [dict(row) for row in cursor.fetchall()]

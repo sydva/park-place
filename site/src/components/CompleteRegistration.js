@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import apiService from '../services/api';
 import './CompleteRegistration.css';
@@ -9,7 +9,6 @@ const CompleteRegistration = ({ onComplete }) => {
     username: '',
     userType: 'parker', // Default to parker
     licensePlate: '',
-    licensePlateState: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -47,7 +46,7 @@ const CompleteRegistration = ({ onComplete }) => {
         name: formData.username.trim(),
         user_type: formData.userType,
         car_license_plate: formData.userType === 'parker' ? 
-          `${formData.licensePlateState}${formData.licensePlate}`.trim() : null,
+          formData.licensePlate.trim() : null,
       };
 
       await apiService.register(registrationData);
@@ -60,19 +59,25 @@ const CompleteRegistration = ({ onComplete }) => {
       }
     } catch (error) {
       console.error('Registration failed:', error);
-      setError(error.message || 'Registration failed. Please try again.');
+      let errorMessage = 'Registration failed. Please try again.';
+      
+      if (error && typeof error === 'object') {
+        if (error.message) {
+          errorMessage = error.message;
+        } else if (error.detail) {
+          errorMessage = error.detail;
+        } else {
+          errorMessage = JSON.stringify(error);
+        }
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      setError(errorMessage);
     } finally {
       setSubmitting(false);
     }
   };
-
-  const stateOptions = [
-    'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
-    'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
-    'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
-    'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
-    'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
-  ];
 
   return (
     <div className="complete-registration-container">
@@ -116,40 +121,23 @@ const CompleteRegistration = ({ onComplete }) => {
           </div>
 
           {(formData.userType === 'parker' || formData.userType === 'both') && (
-            <>
-              <div className="form-group">
-                <label htmlFor="licensePlateState">License Plate State</label>
-                <select
-                  id="licensePlateState"
-                  name="licensePlateState"
-                  value={formData.licensePlateState}
-                  onChange={handleInputChange}
-                >
-                  <option value="">Select State</option>
-                  {stateOptions.map(state => (
-                    <option key={state} value={state}>{state}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="licensePlate">License Plate Number *</label>
-                <input
-                  type="text"
-                  id="licensePlate"
-                  name="licensePlate"
-                  value={formData.licensePlate}
-                  onChange={handleInputChange}
-                  placeholder="Enter license plate number"
-                  maxLength="10"
-                  style={{ textTransform: 'uppercase' }}
-                  required
-                />
-                <small className="form-help">
-                  Required for parking and reporting violations
-                </small>
-              </div>
-            </>
+            <div className="form-group">
+              <label htmlFor="licensePlate">License Plate *</label>
+              <input
+                type="text"
+                id="licensePlate"
+                name="licensePlate"
+                value={formData.licensePlate}
+                onChange={handleInputChange}
+                placeholder="Enter license plate"
+                maxLength="10"
+                style={{ textTransform: 'uppercase' }}
+                required
+              />
+              <small className="form-help">
+                Required for parking and reporting violations
+              </small>
+            </div>
           )}
 
           {error && <div className="error-message">{error}</div>}
@@ -166,7 +154,9 @@ const CompleteRegistration = ({ onComplete }) => {
         </form>
 
         <div className="registration-footer">
-          <p>By completing registration, you agree to our terms of service and privacy policy.</p>
+          <p>
+            By completing registration, you agree to our <Link to="/terms">Terms of Service</Link> and <Link to="/privacy">Privacy Policy</Link>.
+          </p>
         </div>
       </div>
     </div>

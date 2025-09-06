@@ -300,6 +300,49 @@ class ApiService {
       throw error;
     }
   }
+
+  async uploadVerificationDocuments(userEmail, profilePhoto, idDocument, vehicleRegistration) {
+    try {
+      const formData = new FormData();
+      formData.append('user_email', userEmail);
+      formData.append('profile_photo', profilePhoto);
+      formData.append('id_document', idDocument);
+      formData.append('vehicle_registration', vehicleRegistration);
+
+      const response = await fetch(`${API_BASE_URL}/verification/upload`, {
+        method: 'POST',
+        body: formData, // Don't set Content-Type header - let browser set it with boundary
+      });
+      
+      if (!response.ok) {
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorMessage;
+        } catch (e) {
+          // If we can't parse the error response, use the generic message
+        }
+        throw new Error(errorMessage);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error uploading verification documents:', error);
+      throw error;
+    }
+  }
+
+  async getVerificationStatus(email) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/verification/status?email=${encodeURIComponent(email)}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting verification status:', error);
+      throw error;
+    }
+  }
 }
 
 export default new ApiService();

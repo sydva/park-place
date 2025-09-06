@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUser, useClerk } from '@clerk/clerk-react';
 import apiService from '../services/api';
 import './UserMenu.css';
+import Icon from './Icon';
 
 const UserMenu = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -83,18 +84,15 @@ const UserMenu = () => {
     navigate('/edit-profile');
   };
 
+  const handleVerifyIdentity = () => {
+    setIsOpen(false);
+    navigate('/verify-identity');
+  };
+
   const startEditing = (field, currentValue) => {
     setEditingField(field);
-    if (field === 'license_plate' && currentValue) {
-      // Parse existing license plate to separate state and number
-      const state = currentValue.length >= 2 ? currentValue.substring(0, 2) : '';
-      const number = currentValue.length >= 2 ? currentValue.substring(2) : currentValue;
-      setEditState(state);
-      setEditValue(number);
-    } else {
-      setEditValue(currentValue || '');
-      setEditState('');
-    }
+    setEditValue(currentValue || '');
+    setEditState('');
   };
 
   const cancelEditing = () => {
@@ -117,8 +115,7 @@ const UserMenu = () => {
       if (editingField === 'username') {
         updateData.name = editValue.trim();
       } else if (editingField === 'license_plate') {
-        const fullPlate = editState && editValue ? `${editState}${editValue}`.trim() : editValue.trim();
-        updateData.car_license_plate = fullPlate || null;
+        updateData.car_license_plate = editValue.trim() || null;
       }
 
       await apiService.updateProfile(updateData);
@@ -152,9 +149,6 @@ const UserMenu = () => {
             ) : user ? (
               <>
                 <div className="menu-item">
-                  <strong>Name:</strong> {user.fullName || user.firstName || 'Unknown'}
-                </div>
-                <div className="menu-item">
                   <strong>Email:</strong> {user.primaryEmailAddress?.emailAddress}
                 </div>
                 {dbUserProfile ? (
@@ -180,8 +174,10 @@ const UserMenu = () => {
                           <button 
                             className="edit-icon"
                             onClick={() => startEditing('username', dbUserProfile.username)}
+                            aria-label="Edit username"
+                            title="Edit username"
                           >
-                            ✏️
+                            <Icon name="edit" size={14} />
                           </button>
                         </div>
                       )}
@@ -192,17 +188,7 @@ const UserMenu = () => {
                     <div className="menu-item editable-item">
                       <strong>License Plate:</strong>
                       {editingField === 'license_plate' ? (
-                        <div className="inline-edit license-edit">
-                          <select
-                            value={editState}
-                            onChange={(e) => setEditState(e.target.value)}
-                            className="edit-select"
-                          >
-                            <option value="">State</option>
-                            {['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'].map(state => (
-                              <option key={state} value={state}>{state}</option>
-                            ))}
-                          </select>
+                        <div className="inline-edit">
                           <input
                             type="text"
                             value={editValue}
@@ -218,23 +204,23 @@ const UserMenu = () => {
                       ) : (
                         <div className="field-display">
                           <span>
-                            {dbUserProfile.license_plate ? 
-                              `${dbUserProfile.license_plate_state || ''}${dbUserProfile.license_plate_state ? '-' : ''}${dbUserProfile.license_plate}` : 
-                              'Not set'}
+                            {dbUserProfile.license_plate || 'Not set'}
                           </span>
                           <button 
                             className="edit-icon"
                             onClick={() => startEditing('license_plate', dbUserProfile.license_plate)}
+                            aria-label="Edit license plate"
+                            title="Edit license plate"
                           >
-                            ✏️
+                            <Icon name="edit" size={14} />
                           </button>
                         </div>
                       )}
                     </div>
                     <div className="menu-item">
                       <strong>Status:</strong> 
-                      <span className="verification-status verified">
-                        ✓ Registered User
+                      <span className={`verification-status ${dbUserProfile.is_verified ? 'verified' : 'unverified'}`}>
+                        {dbUserProfile.is_verified ? '✓ Verified User' : '⚠ Unverified'}
                       </span>
                     </div>
                   </>
@@ -258,6 +244,11 @@ const UserMenu = () => {
             <button className="menu-action-button" onClick={handleEditProfile}>
               Edit Profile
             </button>
+            {dbUserProfile && !dbUserProfile.is_verified && (
+              <button className="menu-action-button verify-button" onClick={handleVerifyIdentity}>
+                <Icon name="lock" size={14} /> Get Verified
+              </button>
+            )}
             <button className="menu-action-button" onClick={handleReportLicensePlate}>
               Report License Plate
             </button>
