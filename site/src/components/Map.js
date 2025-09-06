@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import UserMenu from './UserMenu';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -70,6 +71,7 @@ const Map = () => {
 
   return (
     <div style={{ height: '100vh', width: '100%' }}>
+      <UserMenu />
       <MapContainer 
         center={position} 
         zoom={15} 
