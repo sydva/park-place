@@ -1,10 +1,12 @@
 from contextlib import asynccontextmanager
 from typing import List, Optional
 from datetime import datetime
+from pathlib import Path
 
 import anyio
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from backend import database as db
@@ -13,6 +15,10 @@ from backend import database as db
 # Temporary bookings storage until we add bookings table
 bookings_db = {}
 next_booking_id = 1
+
+# Image upload configuration
+UPLOAD_DIR = Path("./uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
 
 # Temporary current user for development
 DEV_USER = {
@@ -89,6 +95,13 @@ class SearchQuery(BaseModel):
     max_price: Optional[float] = None
 
 
+class ReportLicensePlate(BaseModel):
+    license_plate: str
+    space_id: Optional[int] = None
+    description: str
+    reporter_email: Optional[str] = None
+
+
 def get_current_user():
     """Temporary function to return dev user"""
     return DEV_USER
@@ -104,6 +117,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Park Place API", version="0.1.0", lifespan=lifespan)
+
+# Mount static files for serving uploaded images
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,
@@ -339,7 +355,7 @@ async def delete_space(space_id: int):
 
 
 @app.post("/spaces/{space_id}/upload-image")
-async def upload_image(space_id: int):
+async def upload_image(space_id: int, file: UploadFile = File(...)):
     current_user = get_current_user()
     place = db.get_place_by_id(space_id)
     if not place:
@@ -351,8 +367,26 @@ async def upload_image(space_id: int):
     ):
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    # TODO: Handle actual file upload
-    image_url = f"https://placeholder.com/parking/{space_id}.jpg"
+    # Validate file type
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+
+    # Generate unique filename
+    file_extension = (
+        file.filename.split(".")[-1]
+        if file.filename and "." in file.filename
+        else "jpg"
+    )
+    filename = f"space_{space_id}_{datetime.now().timestamp():.0f}.{file_extension}"
+    file_path = UPLOAD_DIR / filename
+
+    # Save file
+    contents = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(contents)
+
+    # Return URL path
+    image_url = f"/uploads/{filename}"
     return {"image_url": image_url}
 
 
@@ -401,7 +435,7 @@ async def create_booking(booking: Booking):
         "end_time": booking.end_time,
         "total_price": total_price,
         "status": "confirmed",
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(),
     }
 
     bookings_db[str(booking_id)] = booking_data
@@ -442,6 +476,25 @@ async def get_space_bookings(space_id: int):
         if booking["space_id"] == space_id
     ]
     return space_bookings
+
+
+@app.post("/reports/license-plate")
+async def report_license_plate(report: ReportLicensePlate):
+    # Teammate is adding database logic
+    # Using report parameter to avoid unused variable warning
+    _ = report
+    raise HTTPException(
+        status_code=501,
+        detail="License plate reporting is being implemented by teammate",
+    )
+
+
+@app.get("/reports")
+async def get_reports():
+    # Teammate is adding database logic
+    raise HTTPException(
+        status_code=501, detail="Report viewing is being implemented by teammate"
+    )
 
 
 if __name__ == "__main__":

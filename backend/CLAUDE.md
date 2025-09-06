@@ -83,19 +83,20 @@ The React frontend has these key components:
 
 #### Phase 1: Core MVP (2-3 hours)
 1. Basic FastAPI setup with anyio
-2. Auth endpoints (simple JWT)
-3. CRUD for parking spaces
-4. Basic search/filter endpoint
+2. CRUD for parking spaces
+3. Basic search/filter endpoint
+4. Simple dev user (no auth for demo)
 
 #### Phase 2: Essential Features (2 hours)
 1. Booking system
-2. Image upload (local storage for now)
+2. Image upload (local storage)
 3. Basic availability checking
+4. License plate reporting endpoints
 
 #### Phase 3: Nice-to-haves (if time permits)
 1. Reviews/ratings
 2. Real-time updates via WebSockets
-3. Email notifications
+3. Enhanced search filters
 
 ### Quick Start Commands
 
@@ -113,16 +114,16 @@ python -m backend.main
 ### Key Design Decisions
 
 1. **anyio over pure asyncio**: Structured concurrency with compatibility for asyncio database libraries
-2. **JWT auth**: Stateless, simple for hackathon
-3. **PostgreSQL**: Robust geospatial queries with PostGIS extension
-4. **Local file storage initially**: Skip S3 complexity for MVP
+2. **No auth for hackathon**: Using hardcoded dev user for simplicity
+3. **SQLite for MVP**: Simple setup, can migrate to PostgreSQL later
+4. **Local file storage**: Skip S3 complexity for MVP
 
-### Security Considerations
+### Security Considerations (Post-Hackathon)
+- Add proper authentication after demo
 - Password hashing with bcrypt
-- JWT tokens with short expiry
-- Rate limiting on auth endpoints
-- Input validation via Pydantic
-- CORS configuration for frontend
+- JWT tokens implementation
+- Input validation via Pydantic (already implemented)
+- CORS configuration for frontend (already implemented)
 
 ### Performance Optimizations
 - Database connection pooling
