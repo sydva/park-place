@@ -132,18 +132,15 @@
   border-color: #61dafb;
 }
 
-.tags-input {
-  width: 100%;
-  padding: 12px;
-  border: 2px solid #ddd;
-  border-radius: 8px;
-  font-size: 14px;
-  transition: border-color 0.2s ease;
+.tags-section {
+  margin-top: 20px;
 }
 
-.tags-input:focus {
-  outline: none;
-  border-color: #61dafb;
+.tags-section h3 {
+  margin: 0 0 12px 0;
+  color: #282c34;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .submit-button {

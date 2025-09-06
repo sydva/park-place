@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import { useNavigate } from 'react-router-dom';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import TagInput from './TagInput';
 import './AddParkingSpace.css';
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -56,7 +57,7 @@ const AddParkingSpace = () => {
   const [pinPosition, setPinPosition] = useState(null);
   const [capturedImage, setCapturedImage] = useState(null);
   const [description, setDescription] = useState('');
-  const [tags, setTags] = useState('');
+  const [tags, setTags] = useState([]);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
@@ -182,13 +183,14 @@ const AddParkingSpace = () => {
               maxLength="200"
             />
             
-            <input
-              type="text"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              placeholder="Tags (e.g., covered, street, garage)"
-              className="tags-input"
-            />
+            <div className="tags-section">
+              <h3>Features & Amenities</h3>
+              <TagInput
+                selectedTags={tags}
+                onTagsChange={setTags}
+                maxTags={8}
+              />
+            </div>
           </div>
 
           <button

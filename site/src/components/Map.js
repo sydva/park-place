@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import UserMenu from './UserMenu';
 import ParkingSpaceMarker from './ParkingSpaceMarker';
+import ParkingSpaceModal from './ParkingSpaceModal';
 import { generateParkingSpaces, filterSpacesByZoom } from '../data/parkingSpaces';
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -143,6 +144,15 @@ const Map = () => {
           />
         ))}
       </MapContainer>
+      
+      {/* Parking Space Modal */}
+      {selectedSpace && (
+        <ParkingSpaceModal
+          space={selectedSpace}
+          userLocation={position}
+          onClose={() => setSelectedSpace(null)}
+        />
+      )}
     </div>
   );
 };
