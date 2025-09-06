@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSessionContext } from 'supertokens-auth-react/recipe/session';
+import { signOut } from 'supertokens-auth-react/recipe/session';
 import './UserMenu.css';
 
 const UserMenu = () => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+  const session = useSessionContext();
   
-  // Mock user data - ready for backend integration
+  // Mock user data - will be replaced with real user data from backend
   const userData = {
-    username: 'JohnDoe',
+    username: session.doesSessionExist ? session.userId?.substring(0, 8) || 'User' : 'Guest',
     rating: 1247,
     licensePlate: 'ABC-123'
   };
@@ -17,10 +20,10 @@ const UserMenu = () => {
     setIsOpen(!isOpen);
   };
 
-  const handleLogout = () => {
-    // Ready for backend logout logic
-    console.log('Logout clicked');
+  const handleLogout = async () => {
+    await signOut();
     setIsOpen(false);
+    navigate('/');
   };
 
   const handleReportLicensePlate = () => {
@@ -33,6 +36,10 @@ const UserMenu = () => {
     navigate('/add-parking-space');
   };
 
+  if (!session.doesSessionExist) {
+    return null; // Don't show menu if user is not logged in
+  }
+
   return (
     <div className="user-menu-container">
       <button className="menu-button" onClick={toggleMenu}>
@@ -44,7 +51,7 @@ const UserMenu = () => {
           <div className="menu-backdrop" onClick={toggleMenu}></div>
           <div className="menu-content">
             <div className="menu-item">
-              <strong>Username:</strong> {userData.username}
+              <strong>User ID:</strong> {userData.username}
             </div>
             <div className="menu-item">
               <strong>Rating:</strong> {userData.rating}
@@ -59,7 +66,7 @@ const UserMenu = () => {
               Add New Parking Space
             </button>
             <button className="logout-button" onClick={handleLogout}>
-              Logout
+              Sign Out
             </button>
           </div>
         </div>

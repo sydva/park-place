@@ -1,5 +1,8 @@
 fastapi
 anyio
+supertokens-python
+uvicorn
+trio
 hypothesis
 schemathesis
 pytest

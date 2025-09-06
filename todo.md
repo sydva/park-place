@@ -1,9 +1,11 @@
 ### users
-- [ ] login & auth
+- [x] login & auth (SuperTokens implemented!)
 - [ ] renter rating
-- [ ]renter flow
+- [ ] renter flow
   - [ ] registration - add car license plate etc
-- [ ]lister flow
+  - [ ] connect to user profile API
+- [ ] lister flow
+  - [ ] connect add parking space to backend API
 
 ### space
 - [ ] show and add parking spaces
