@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import UserMenu from './UserMenu';
+import ParkingSpaceMarker from './ParkingSpaceMarker';
+import { generateParkingSpaces, filterSpacesByZoom } from '../data/parkingSpaces';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -11,10 +13,28 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
+// Component to handle map events and update zoom-based filtering
+const MapEventHandler = ({ onZoomChange, onMoveChange }) => {
+  const map = useMapEvents({
+    zoomend: () => {
+      onZoomChange(map.getZoom());
+    },
+    moveend: () => {
+      const center = map.getCenter();
+      onMoveChange([center.lat, center.lng]);
+    },
+  });
+  return null;
+};
+
 const Map = () => {
   const [position, setPosition] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [parkingSpaces, setParkingSpaces] = useState([]);
+  const [visibleSpaces, setVisibleSpaces] = useState([]);
+  const [currentZoom, setCurrentZoom] = useState(16);
+  const [selectedSpace, setSelectedSpace] = useState(null);
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -25,7 +45,14 @@ const Map = () => {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setPosition([position.coords.latitude, position.coords.longitude]);
+        const userPos = [position.coords.latitude, position.coords.longitude];
+        setPosition(userPos);
+        
+        // Generate parking spaces around user location
+        const spaces = generateParkingSpaces(userPos[0], userPos[1]);
+        setParkingSpaces(spaces);
+        setVisibleSpaces(filterSpacesByZoom(spaces, 16));
+        
         setLoading(false);
       },
       (error) => {
@@ -69,6 +96,20 @@ const Map = () => {
     );
   }
 
+  const handleZoomChange = (zoom) => {
+    setCurrentZoom(zoom);
+    setVisibleSpaces(filterSpacesByZoom(parkingSpaces, zoom));
+  };
+
+  const handleMoveChange = (center) => {
+    // Could regenerate parking spaces for new area in real app
+  };
+
+  const handleParkingSpaceClick = (space) => {
+    setSelectedSpace(space);
+    console.log('Selected parking space:', space);
+  };
+
   return (
     <div style={{ height: '100vh', width: '100%' }}>
       <UserMenu />
@@ -85,8 +126,22 @@ const Map = () => {
           subdomains="abcd"
           maxZoom={20}
         />
+        <MapEventHandler 
+          onZoomChange={handleZoomChange} 
+          onMoveChange={handleMoveChange}
+        />
+        {/* User location marker */}
         <Marker position={position}>
         </Marker>
+        {/* Parking space markers */}
+        {visibleSpaces.map((space) => (
+          <ParkingSpaceMarker 
+            key={space.id}
+            space={space}
+            showPrice={currentZoom > 17}
+            onClick={handleParkingSpaceClick}
+          />
+        ))}
       </MapContainer>
     </div>
   );
