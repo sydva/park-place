@@ -11,7 +11,7 @@ def init_database():
     """Initialize database with required tables"""
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute("""
-            CREATE TABLE IF NOT EXISTS parkers (
+            CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 email TEXT UNIQUE NOT NULL,
                 username TEXT UNIQUE NOT NULL,
@@ -25,24 +25,12 @@ def init_database():
         """)
 
         conn.execute("""
-            CREATE TABLE IF NOT EXISTS providers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                email TEXT UNIQUE NOT NULL,
-                username TEXT UNIQUE NOT NULL,
-                hashed_password TEXT NOT NULL,
-                is_active BOOLEAN DEFAULT 1,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-
-        conn.execute("""
             CREATE TABLE IF NOT EXISTS places (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT,
                 description TEXT,
                 added_by INTEGER NOT NULL,
-                owned_by INTEGER,
+                creator_is_owner BOOLEAN DEFAULT 1,
                 latitude DECIMAL(10, 8),
                 longitude DECIMAL(10, 8),
                 address TEXT NOT NULL,
@@ -50,8 +38,7 @@ def init_database():
                 is_published BOOLEAN DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (added_by) REFERENCES parkers (id),
-                FOREIGN KEY (owned_by) REFERENCES providers (id)
+                FOREIGN KEY (added_by) REFERENCES users (id)
             )
         """)
 
@@ -81,19 +68,12 @@ def init_database():
         """)
 
         # Create indexes for better performance
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_parkers_email ON parkers(email)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
         conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_parkers_username ON parkers(username)"
+            "CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)"
         )
         conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_parkers_license_plate "
-            "ON parkers(license_plate)"
-        )
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_providers_email ON providers(email)"
-        )
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_providers_username ON providers(username)"
+            "CREATE INDEX IF NOT EXISTS idx_users_license_plate ON users(license_plate)"
         )
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_places_latitude ON places(latitude)"
@@ -102,6 +82,7 @@ def init_database():
             "CREATE INDEX IF NOT EXISTS idx_places_longitude ON places(longitude)"
         )
 
+<<<<<<< HEAD
         # Add price_per_hour column if it doesn't exist (for existing databases)
         cursor = conn.cursor()
         cursor.execute("PRAGMA table_info(places)")
@@ -110,6 +91,39 @@ def init_database():
             conn.execute(
                 "ALTER TABLE places ADD COLUMN price_per_hour DECIMAL(10, 2) DEFAULT 0"
             )
+=======
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS user_ratings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                rater_id INTEGER NOT NULL,
+                ratee_id INTEGER NOT NULL,
+                rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
+                description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (rater_id) REFERENCES users (id),
+                FOREIGN KEY (ratee_id) REFERENCES users (id)
+            )
+        """)
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS place_ratings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                place_id INTEGER NOT NULL,
+                rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
+                description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id),
+                FOREIGN KEY (place_id) REFERENCES places (id)
+            )
+        """)
+
+        # Create indexes for rating tables
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_user_ratings_rater ON user_ratings(rater_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_user_ratings_ratee ON user_ratings(ratee_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_place_ratings_user ON place_ratings(user_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_place_ratings_place ON place_ratings(place_id)")
+>>>>>>> 7288ab3 (consolidate parkers and providers into users. Add ratings.)
 
         conn.commit()
 
@@ -129,19 +143,19 @@ def get_db():
         conn.close()
 
 
-# Parker CRUD operations
-def create_parker(
+# User CRUD operations
+def create_user(
     email: str,
     username: str,
     hashed_password: str,
     license_plate_state: str | None = None,
     license_plate: str | None = None,
 ) -> int:
-    """Create a new parker and return the parker ID"""
+    """Create a new user and return the user ID"""
     with get_db() as conn:
         cursor = conn.execute(
             """
-            INSERT INTO parkers (email, username, hashed_password,
+            INSERT INTO users (email, username, hashed_password,
                 license_plate_state, license_plate)
             VALUES (?, ?, ?, ?, ?)
         """,
@@ -150,19 +164,31 @@ def create_parker(
         return cursor.lastrowid or 0
 
 
-def get_parker_by_email(email: str) -> dict[str, Any] | None:
-    """Get parker by email"""
+def get_user_by_email(email: str) -> dict[str, Any] | None:
+    """Get user by email with rating statistics"""
     with get_db() as conn:
         cursor = conn.execute(
             """
-            SELECT * FROM parkers WHERE email = ?
+            SELECT u.*, 
+                   COALESCE(AVG(ur.rating), 0) as average_rating,
+                   COUNT(ur.rating) as rating_count
+            FROM users u
+            LEFT JOIN user_ratings ur ON u.id = ur.ratee_id
+            WHERE u.email = ?
+            GROUP BY u.id
         """,
             (email,),
         )
         row = cursor.fetchone()
-        return dict(row) if row else None
+        if row:
+            result = dict(row)
+            # Convert to proper types
+            result['average_rating'] = float(result['average_rating']) if result['rating_count'] > 0 else None
+            return result
+        return None
 
 
+<<<<<<< HEAD
 def get_parker_by_license_plate(license_plate: str) -> dict[str, Any] | None:
     """Get parker by license plate"""
     with get_db() as conn:
@@ -178,14 +204,25 @@ def get_parker_by_license_plate(license_plate: str) -> dict[str, Any] | None:
 
 def get_provider_by_email(email: str) -> dict[str, Any] | None:
     """Get provider by email"""
+=======
+def get_user_by_id(user_id: int) -> dict[str, Any] | None:
+    """Get user by ID with rating statistics"""
+>>>>>>> 7288ab3 (consolidate parkers and providers into users. Add ratings.)
     with get_db() as conn:
         cursor = conn.execute(
             """
-            SELECT * FROM providers WHERE email = ?
+            SELECT u.*, 
+                   COALESCE(AVG(ur.rating), 0) as average_rating,
+                   COUNT(ur.rating) as rating_count
+            FROM users u
+            LEFT JOIN user_ratings ur ON u.id = ur.ratee_id
+            WHERE u.id = ?
+            GROUP BY u.id
         """,
-            (email,),
+            (user_id,),
         )
         row = cursor.fetchone()
+<<<<<<< HEAD
         return dict(row) if row else None
 
 
@@ -261,14 +298,26 @@ def create_provider(email: str, username: str, hashed_password: str) -> int:
             (email, username, hashed_password),
         )
         return cursor.lastrowid or 0
+=======
+        if row:
+            result = dict(row)
+            # Convert to proper types
+            result['average_rating'] = float(result['average_rating']) if result['rating_count'] > 0 else None
+            return result
+        return None
+>>>>>>> 7288ab3 (consolidate parkers and providers into users. Add ratings.)
 
 
 # Place CRUD operations
 def create_place(
     added_by: int,
+<<<<<<< HEAD
     title: str | None = None,
     description: str | None = None,
     owned_by: int | None = None,
+=======
+    creator_is_owner: bool = True,
+>>>>>>> 7288ab3 (consolidate parkers and providers into users. Add ratings.)
     latitude: float | None = None,
     longitude: float | None = None,
     address: str | None = None,
@@ -278,6 +327,7 @@ def create_place(
     with get_db() as conn:
         cursor = conn.execute(
             """
+<<<<<<< HEAD
             INSERT INTO places (title, description, added_by, owned_by,
                 latitude, longitude, address, price_per_hour)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -292,59 +342,124 @@ def create_place(
                 address,
                 price_per_hour,
             ),
+=======
+            INSERT INTO places (title, description, added_by, creator_is_owner,
+                latitude, longitude, address)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+            (title, description, added_by, creator_is_owner, latitude, longitude, address),
+>>>>>>> 7288ab3 (consolidate parkers and providers into users. Add ratings.)
         )
         return cursor.lastrowid or 0
 
 
 def get_place_by_id(place_id: int) -> dict[str, Any] | None:
-    """Get place by ID"""
+    """Get place by ID with rating statistics"""
     with get_db() as conn:
         cursor = conn.execute(
             """
-            SELECT * FROM places WHERE id = ?
+            SELECT p.*, 
+                   COALESCE(AVG(pr.rating), 0) as average_rating,
+                   COUNT(pr.rating) as rating_count
+            FROM places p
+            LEFT JOIN place_ratings pr ON p.id = pr.place_id
+            WHERE p.id = ?
+            GROUP BY p.id
         """,
             (place_id,),
         )
         row = cursor.fetchone()
-        return dict(row) if row else None
+        if row:
+            result = dict(row)
+            # Convert to proper types
+            result['average_rating'] = float(result['average_rating']) if result['rating_count'] > 0 else None
+            return result
+        return None
+
+
+def get_places_by_creator(
+    creator_id: int, skip: int = 0, limit: int = 100
+) -> list[dict[str, Any]]:
+    """Get places by creator ID with rating statistics"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            SELECT p.*, 
+                   COALESCE(AVG(pr.rating), 0) as average_rating,
+                   COUNT(pr.rating) as rating_count
+            FROM places p
+            LEFT JOIN place_ratings pr ON p.id = pr.place_id
+            WHERE p.added_by = ?
+            GROUP BY p.id
+            ORDER BY p.created_at DESC
+            LIMIT ? OFFSET ?
+        """,
+            (creator_id, limit, skip),
+        )
+        results = []
+        for row in cursor.fetchall():
+            result = dict(row)
+            result['average_rating'] = float(result['average_rating']) if result['rating_count'] > 0 else None
+            results.append(result)
+        return results
 
 
 def get_places_by_owner(
     owner_id: int, skip: int = 0, limit: int = 100
 ) -> list[dict[str, Any]]:
-    """Get places by owner ID"""
+    """Get places owned by a user (where creator_is_owner=True and added_by=owner_id)"""
     with get_db() as conn:
         cursor = conn.execute(
             """
-            SELECT * FROM places
-            WHERE owned_by = ?
-            ORDER BY created_at DESC
+            SELECT p.*, 
+                   COALESCE(AVG(pr.rating), 0) as average_rating,
+                   COUNT(pr.rating) as rating_count
+            FROM places p
+            LEFT JOIN place_ratings pr ON p.id = pr.place_id
+            WHERE p.added_by = ? AND p.creator_is_owner = 1
+            GROUP BY p.id
+            ORDER BY p.created_at DESC
             LIMIT ? OFFSET ?
         """,
             (owner_id, limit, skip),
         )
-        return [dict(row) for row in cursor.fetchall()]
+        results = []
+        for row in cursor.fetchall():
+            result = dict(row)
+            result['average_rating'] = float(result['average_rating']) if result['rating_count'] > 0 else None
+            results.append(result)
+        return results
 
 
 def get_published_places(skip: int = 0, limit: int = 100) -> list[dict[str, Any]]:
-    """Get published places"""
+    """Get published places with rating statistics"""
     with get_db() as conn:
         cursor = conn.execute(
             """
-            SELECT * FROM places
-            WHERE is_published = 1
-            ORDER BY created_at DESC
+            SELECT p.*, 
+                   COALESCE(AVG(pr.rating), 0) as average_rating,
+                   COUNT(pr.rating) as rating_count
+            FROM places p
+            LEFT JOIN place_ratings pr ON p.id = pr.place_id
+            WHERE p.is_published = 1
+            GROUP BY p.id
+            ORDER BY p.created_at DESC
             LIMIT ? OFFSET ?
         """,
             (limit, skip),
         )
-        return [dict(row) for row in cursor.fetchall()]
+        results = []
+        for row in cursor.fetchall():
+            result = dict(row)
+            result['average_rating'] = float(result['average_rating']) if result['rating_count'] > 0 else None
+            results.append(result)
+        return results
 
 
 def search_places_by_location(
     lat: float, lng: float, radius_km: float = 1.0
 ) -> list[dict[str, Any]]:
-    """Search places within radius of given coordinates"""
+    """Search places within radius of given coordinates with rating statistics"""
     with get_db() as conn:
         # Simple bounding box search (for MVP - in production use PostGIS)
         # 1 degree of latitude ≈ 111 km
@@ -356,14 +471,24 @@ def search_places_by_location(
 
         cursor = conn.execute(
             """
-            SELECT * FROM places
-            WHERE latitude BETWEEN ? AND ?
-            AND longitude BETWEEN ? AND ?
-            AND is_published = 1
+            SELECT p.*, 
+                   COALESCE(AVG(pr.rating), 0) as average_rating,
+                   COUNT(pr.rating) as rating_count
+            FROM places p
+            LEFT JOIN place_ratings pr ON p.id = pr.place_id
+            WHERE p.latitude BETWEEN ? AND ?
+            AND p.longitude BETWEEN ? AND ?
+            AND p.is_published = 1
+            GROUP BY p.id
         """,
             (lat - lat_delta, lat + lat_delta, lng - lng_delta, lng + lng_delta),
         )
-        return [dict(row) for row in cursor.fetchall()]
+        results = []
+        for row in cursor.fetchall():
+            result = dict(row)
+            result['average_rating'] = float(result['average_rating']) if result['rating_count'] > 0 else None
+            results.append(result)
+        return results
 
 
 def update_place(place_id: int, **kwargs: Any) -> bool:
@@ -375,7 +500,11 @@ def update_place(place_id: int, **kwargs: Any) -> bool:
         "longitude",
         "address",
         "is_published",
+<<<<<<< HEAD
         "price_per_hour",
+=======
+        "creator_is_owner",
+>>>>>>> 7288ab3 (consolidate parkers and providers into users. Add ratings.)
     ]
     updates: list[str] = []
     params: list[Any] = []
@@ -421,17 +550,10 @@ def check_database_health() -> bool:
         return False
 
 
-def get_parker_count() -> int:
-    """Get total number of parkers"""
+def get_user_count() -> int:
+    """Get total number of users"""
     with get_db() as conn:
-        cursor = conn.execute("SELECT COUNT(*) FROM parkers")
-        return cursor.fetchone()[0]
-
-
-def get_provider_count() -> int:
-    """Get total number of providers"""
-    with get_db() as conn:
-        cursor = conn.execute("SELECT COUNT(*) FROM providers")
+        cursor = conn.execute("SELECT COUNT(*) FROM users")
         return cursor.fetchone()[0]
 
 
@@ -442,6 +564,7 @@ def get_place_count() -> int:
         return cursor.fetchone()[0]
 
 
+<<<<<<< HEAD
 # License plate report operations
 def create_license_plate_report(
     license_plate: str, description: str, reporter_email: str | None = None, space_id: int | None = None
@@ -454,10 +577,28 @@ def create_license_plate_report(
             VALUES (?, ?, ?, ?)
         """,
             (license_plate, description, reporter_email, space_id),
+=======
+# User Rating CRUD operations
+def create_user_rating(
+    rater_id: int,
+    ratee_id: int,
+    rating: int,
+    description: str | None = None,
+) -> int:
+    """Create a new user rating and return the rating ID"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO user_ratings (rater_id, ratee_id, rating, description)
+            VALUES (?, ?, ?, ?)
+        """,
+            (rater_id, ratee_id, rating, description),
+>>>>>>> 7288ab3 (consolidate parkers and providers into users. Add ratings.)
         )
         return cursor.lastrowid or 0
 
 
+<<<<<<< HEAD
 def get_license_plate_reports(limit: int = 100) -> list[dict[str, Any]]:
     """Get all license plate reports"""
     with get_db() as conn:
@@ -468,10 +609,25 @@ def get_license_plate_reports(limit: int = 100) -> list[dict[str, Any]]:
             LIMIT ?
         """,
             (limit,),
+=======
+def get_user_ratings_by_ratee(ratee_id: int) -> list[dict[str, Any]]:
+    """Get all ratings for a specific user (ratee)"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            SELECT ur.*, u.username as rater_username
+            FROM user_ratings ur
+            JOIN users u ON ur.rater_id = u.id
+            WHERE ur.ratee_id = ?
+            ORDER BY ur.created_at DESC
+        """,
+            (ratee_id,),
+>>>>>>> 7288ab3 (consolidate parkers and providers into users. Add ratings.)
         )
         return [dict(row) for row in cursor.fetchall()]
 
 
+<<<<<<< HEAD
 # Notification operations
 def create_notification(
     user_email: str, title: str, message: str, notification_type: str = "info"
@@ -484,10 +640,66 @@ def create_notification(
             VALUES (?, ?, ?, ?)
         """,
             (user_email, title, message, notification_type),
+=======
+def get_user_ratings_by_rater(rater_id: int) -> list[dict[str, Any]]:
+    """Get all ratings given by a specific user (rater)"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            SELECT ur.*, u.username as ratee_username
+            FROM user_ratings ur
+            JOIN users u ON ur.ratee_id = u.id
+            WHERE ur.rater_id = ?
+            ORDER BY ur.created_at DESC
+        """,
+            (rater_id,),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+def get_user_average_rating(user_id: int) -> float | None:
+    """Get the average rating for a user"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            SELECT AVG(rating) FROM user_ratings WHERE ratee_id = ?
+        """,
+            (user_id,),
+        )
+        result = cursor.fetchone()[0]
+        return float(result) if result is not None else None
+
+
+def get_user_rating_count(user_id: int) -> int:
+    """Get the total number of ratings for a user"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            "SELECT COUNT(*) FROM user_ratings WHERE ratee_id = ?", (user_id,)
+        )
+        return cursor.fetchone()[0]
+
+
+# Place Rating CRUD operations
+def create_place_rating(
+    user_id: int,
+    place_id: int,
+    rating: int,
+    description: str | None = None,
+) -> int:
+    """Create a new place rating and return the rating ID"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO place_ratings (user_id, place_id, rating, description)
+            VALUES (?, ?, ?, ?)
+        """,
+            (user_id, place_id, rating, description),
+>>>>>>> 7288ab3 (consolidate parkers and providers into users. Add ratings.)
         )
         return cursor.lastrowid or 0
 
 
+<<<<<<< HEAD
 def get_user_notifications(user_email: str, unread_only: bool = False) -> list[dict[str, Any]]:
     """Get notifications for a user"""
     with get_db() as conn:
@@ -523,3 +735,71 @@ def get_unread_notification_count(user_email: str) -> int:
             (user_email,),
         )
         return cursor.fetchone()[0]
+=======
+def get_place_ratings(place_id: int) -> list[dict[str, Any]]:
+    """Get all ratings for a specific place"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            SELECT pr.*, u.username
+            FROM place_ratings pr
+            JOIN users u ON pr.user_id = u.id
+            WHERE pr.place_id = ?
+            ORDER BY pr.created_at DESC
+        """,
+            (place_id,),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+def get_user_place_ratings(user_id: int) -> list[dict[str, Any]]:
+    """Get all place ratings given by a specific user"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            SELECT pr.*, p.title as place_title
+            FROM place_ratings pr
+            JOIN places p ON pr.place_id = p.id
+            WHERE pr.user_id = ?
+            ORDER BY pr.created_at DESC
+        """,
+            (user_id,),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+def get_place_average_rating(place_id: int) -> float | None:
+    """Get the average rating for a place"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            SELECT AVG(rating) FROM place_ratings WHERE place_id = ?
+        """,
+            (place_id,),
+        )
+        result = cursor.fetchone()[0]
+        return float(result) if result is not None else None
+
+
+def get_place_rating_count(place_id: int) -> int:
+    """Get the total number of ratings for a place"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            "SELECT COUNT(*) FROM place_ratings WHERE place_id = ?", (place_id,)
+        )
+        return cursor.fetchone()[0]
+
+
+def delete_user_rating(rating_id: int) -> bool:
+    """Delete a user rating"""
+    with get_db() as conn:
+        cursor = conn.execute("DELETE FROM user_ratings WHERE id = ?", (rating_id,))
+        return cursor.rowcount > 0
+
+
+def delete_place_rating(rating_id: int) -> bool:
+    """Delete a place rating"""
+    with get_db() as conn:
+        cursor = conn.execute("DELETE FROM place_ratings WHERE id = ?", (rating_id,))
+        return cursor.rowcount > 0
+>>>>>>> 7288ab3 (consolidate parkers and providers into users. Add ratings.)
