@@ -73,9 +73,9 @@ class ApiService {
           description: spaceData.description,
           lat: spaceData.lat,
           lng: spaceData.lng,
-          price_per_hour: spaceData.price,
+          price_per_hour: spaceData.price_per_hour,
           tags: spaceData.tags || [],
-          image_url: spaceData.imageUrl,
+          image_url: spaceData.image_url,
         }),
       });
 

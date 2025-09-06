@@ -96,27 +96,21 @@ const AddParkingSpace = () => {
       return;
     }
 
-    if (!title.trim()) {
-      alert('Please enter a title for the parking space.');
-      return;
-    }
-
-    if (!description.trim()) {
-      alert('Please enter a description for the parking space.');
-      return;
-    }
+    // Title and description are now optional - provide defaults if empty
+    const finalTitle = title.trim() || 'Parking Space';
+    const finalDescription = description.trim() || 'Available parking space';
 
     setSubmitting(true);
     
     try {
       const spaceData = {
-        title: title.trim(),
-        description: description.trim(),
+        title: finalTitle,
+        description: finalDescription,
         lat: pinPosition[0],
         lng: pinPosition[1],
-        price: parseFloat(price) || 0,
+        price_per_hour: parseFloat(price) || 0,
         tags: tags,
-        imageUrl: capturedImage // In a real app, we'd upload this to a file service first
+        image_url: capturedImage // In a real app, we'd upload this to a file service first
       };
 
       await apiService.createSpace(spaceData);
@@ -235,7 +229,7 @@ const AddParkingSpace = () => {
             <h2>Parking Space Details</h2>
             
             <div className="form-group">
-              <label htmlFor="title">Title *</label>
+              <label htmlFor="title">Title</label>
               <input
                 type="text"
                 id="title"
@@ -244,12 +238,11 @@ const AddParkingSpace = () => {
                 placeholder="e.g., Downtown garage spot, Driveway space..."
                 className="title-input"
                 maxLength="100"
-                required
               />
             </div>
 
             <div className="form-group">
-              <label htmlFor="description">Description *</label>
+              <label htmlFor="description">Description</label>
               <textarea
                 id="description"
                 value={description}
@@ -258,7 +251,6 @@ const AddParkingSpace = () => {
                 className="description-input"
                 rows="3"
                 maxLength="200"
-                required
               />
             </div>
 
