@@ -264,6 +264,16 @@
 
 /* Mobile adjustments */
 @media (max-width: 768px) {
+  .search-bar-container {
+    top: 20px; /* same row as menu */
+    right: 88px; /* reserve space for menu button */
+  }
+
+  .search-bar {
+    max-width: none;
+    margin: 0; /* fill the container */
+  }
+
   .search-input-container {
     padding: 8px 12px;
     gap: 6px;

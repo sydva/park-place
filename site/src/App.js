@@ -8,6 +8,8 @@ import ReportLicensePlate from './components/ReportLicensePlate';
 import AddParkingSpace from './components/AddParkingSpace';
 import ProtectedRoute from './components/ProtectedRoute';
 import CompleteRegistration from './components/CompleteRegistration';
+import EditProfile from './components/EditProfile';
+import AuthLayout from './components/AuthLayout';
 
 function AppRoutes() {
   const { isSignedIn, isLoaded } = useAuth();
@@ -30,14 +32,26 @@ function AppRoutes() {
       />
       <Route 
         path="/sign-in/*" 
-        element={<SignIn routing="path" path="/sign-in" />} 
+        element={
+          <AuthLayout>
+            <SignIn routing="path" path="/sign-in" />
+          </AuthLayout>
+        } 
       />
       <Route 
         path="/sign-up/*" 
-        element={<SignUp routing="path" path="/sign-up" />} 
+        element={
+          <AuthLayout>
+            <SignUp routing="path" path="/sign-up" />
+          </AuthLayout>
+        } 
       />
       <Route path="/complete-registration" element={<CompleteRegistration />} />
       <Route path="/map" element={<ProtectedRoute><Map /></ProtectedRoute>} />
+      <Route 
+        path="/edit-profile" 
+        element={<ProtectedRoute><EditProfile /></ProtectedRoute>} 
+      />
       <Route 
         path="/report-license-plate" 
         element={<ProtectedRoute><ReportLicensePlate /></ProtectedRoute>} 

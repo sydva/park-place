@@ -1,23 +1,48 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from '@clerk/clerk-react';
 import Icon from './Icon';
+import apiService from '../services/api';
 import './ReportLicensePlate.css';
 
 const ReportLicensePlate = () => {
   const [licensePlate, setLicensePlate] = useState('');
   const [capturedImage, setCapturedImage] = useState(null);
-  const [useCamera, setUseCamera] = useState(false);
+  const [description, setDescription] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
+  const { user } = useUser();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Ready for backend integration
-    console.log('Reporting license plate:', licensePlate);
-    console.log('Image:', capturedImage);
     
-    // Navigate back to map after submission
-    navigate('/map');
+    if (!licensePlate.trim()) {
+      setError('Please enter a license plate number');
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    
+    try {
+      const reportData = {
+        license_plate: licensePlate.trim().toUpperCase(),
+        description: description.trim() || 'License plate violation reported',
+        reporter_email: user?.primaryEmailAddress?.emailAddress || null,
+        space_id: null // Could be enhanced to allow reporting for specific spaces
+      };
+
+      await apiService.reportLicensePlate(reportData);
+      console.log('License plate reported successfully!');
+      navigate('/map');
+    } catch (error) {
+      console.error('Error reporting license plate:', error);
+      setError(error.message || 'Failed to submit report. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleImageCapture = (e) => {
@@ -61,6 +86,18 @@ const ReportLicensePlate = () => {
           />
         </div>
 
+        <div className="input-section">
+          <h2>Description (Optional)</h2>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Describe the violation (e.g., parked illegally, blocking space, etc.)"
+            className="description-input"
+            rows="3"
+            maxLength="200"
+          />
+        </div>
+
         <div className="divider"></div>
 
         <div className="camera-section">
@@ -89,12 +126,14 @@ const ReportLicensePlate = () => {
           )}
         </div>
 
+        {error && <div className="error-message">{error}</div>}
+
         <button
           type="submit"
           className="submit-button"
-          disabled={!licensePlate && !capturedImage}
+          disabled={!licensePlate.trim() || submitting}
         >
-          Submit Report
+          {submitting ? 'Submitting Report...' : 'Submit Report'}
         </button>
       </form>
     </div>

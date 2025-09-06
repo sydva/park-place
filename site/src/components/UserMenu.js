@@ -8,6 +8,11 @@ const UserMenu = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [dbUserProfile, setDbUserProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [editingField, setEditingField] = useState(null);
+  const [editValue, setEditValue] = useState('');
+  const [editState, setEditState] = useState('');
   const navigate = useNavigate();
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
@@ -19,7 +24,7 @@ const UserMenu = () => {
           const profile = await apiService.getUserProfileByEmail(user.primaryEmailAddress.emailAddress);
           setDbUserProfile(profile);
         } catch (error) {
-          console.error('Failed to fetch user profile from database:', error);
+          console.error('Failed to fetch user profile:', error);
           setDbUserProfile(null);
         } finally {
           setProfileLoading(false);
@@ -29,8 +34,21 @@ const UserMenu = () => {
       }
     };
 
+    const fetchNotificationCount = async () => {
+      if (user?.primaryEmailAddress?.emailAddress) {
+        try {
+          const countData = await apiService.getUnreadCount(user.primaryEmailAddress.emailAddress);
+          setUnreadCount(countData.unread_count);
+        } catch (error) {
+          console.error('Failed to fetch notification count:', error);
+          setUnreadCount(0);
+        }
+      }
+    };
+
     if (isLoaded && user) {
       fetchUserProfile();
+      fetchNotificationCount();
     } else {
       setProfileLoading(false);
     }
@@ -60,10 +78,69 @@ const UserMenu = () => {
     navigate('/add-parking-space');
   };
 
+  const handleEditProfile = () => {
+    setIsOpen(false);
+    navigate('/edit-profile');
+  };
+
+  const startEditing = (field, currentValue) => {
+    setEditingField(field);
+    if (field === 'license_plate' && currentValue) {
+      // Parse existing license plate to separate state and number
+      const state = currentValue.length >= 2 ? currentValue.substring(0, 2) : '';
+      const number = currentValue.length >= 2 ? currentValue.substring(2) : currentValue;
+      setEditState(state);
+      setEditValue(number);
+    } else {
+      setEditValue(currentValue || '');
+      setEditState('');
+    }
+  };
+
+  const cancelEditing = () => {
+    setEditingField(null);
+    setEditValue('');
+    setEditState('');
+  };
+
+  const saveField = async () => {
+    if (!user?.primaryEmailAddress?.emailAddress) return;
+
+    try {
+      let updateData = {
+        email: user.primaryEmailAddress.emailAddress,
+        name: dbUserProfile.username,
+        user_type: dbUserProfile.user_type,
+        car_license_plate: dbUserProfile.license_plate || null,
+      };
+
+      if (editingField === 'username') {
+        updateData.name = editValue.trim();
+      } else if (editingField === 'license_plate') {
+        const fullPlate = editState && editValue ? `${editState}${editValue}`.trim() : editValue.trim();
+        updateData.car_license_plate = fullPlate || null;
+      }
+
+      await apiService.updateProfile(updateData);
+      
+      // Refresh profile data
+      const profile = await apiService.getUserProfileByEmail(user.primaryEmailAddress.emailAddress);
+      setDbUserProfile(profile);
+      
+      cancelEditing();
+    } catch (error) {
+      console.error('Failed to update field:', error);
+      alert('Failed to update. Please try again.');
+    }
+  };
+
   return (
     <div className="user-menu-container">
       <button className="menu-button" onClick={toggleMenu}>
         ☰
+        {unreadCount > 0 && (
+          <span className="notification-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
+        )}
       </button>
       
       {isOpen && (
@@ -82,17 +159,78 @@ const UserMenu = () => {
                 </div>
                 {dbUserProfile ? (
                   <>
-                    <div className="menu-item">
-                      <strong>Username:</strong> {dbUserProfile.username}
+                    <div className="menu-item editable-item">
+                      <strong>Username:</strong> 
+                      {editingField === 'username' ? (
+                        <div className="inline-edit">
+                          <input
+                            type="text"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            className="edit-input"
+                            maxLength="50"
+                            autoFocus
+                          />
+                          <button className="save-btn" onClick={saveField}>✓</button>
+                          <button className="cancel-btn" onClick={cancelEditing}>✕</button>
+                        </div>
+                      ) : (
+                        <div className="field-display">
+                          <span>{dbUserProfile.username}</span>
+                          <button 
+                            className="edit-icon"
+                            onClick={() => startEditing('username', dbUserProfile.username)}
+                          >
+                            ✏️
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div className="menu-item">
                       <strong>User Type:</strong> {dbUserProfile.user_type}
                     </div>
-                    {dbUserProfile.license_plate && (
-                      <div className="menu-item">
-                        <strong>License Plate:</strong> {dbUserProfile.license_plate_state ? `${dbUserProfile.license_plate_state}-` : ''}{dbUserProfile.license_plate}
-                      </div>
-                    )}
+                    <div className="menu-item editable-item">
+                      <strong>License Plate:</strong>
+                      {editingField === 'license_plate' ? (
+                        <div className="inline-edit license-edit">
+                          <select
+                            value={editState}
+                            onChange={(e) => setEditState(e.target.value)}
+                            className="edit-select"
+                          >
+                            <option value="">State</option>
+                            {['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'].map(state => (
+                              <option key={state} value={state}>{state}</option>
+                            ))}
+                          </select>
+                          <input
+                            type="text"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value.toUpperCase())}
+                            className="edit-input"
+                            placeholder="ABC123"
+                            maxLength="10"
+                            autoFocus
+                          />
+                          <button className="save-btn" onClick={saveField}>✓</button>
+                          <button className="cancel-btn" onClick={cancelEditing}>✕</button>
+                        </div>
+                      ) : (
+                        <div className="field-display">
+                          <span>
+                            {dbUserProfile.license_plate ? 
+                              `${dbUserProfile.license_plate_state || ''}${dbUserProfile.license_plate_state ? '-' : ''}${dbUserProfile.license_plate}` : 
+                              'Not set'}
+                          </span>
+                          <button 
+                            className="edit-icon"
+                            onClick={() => startEditing('license_plate', dbUserProfile.license_plate)}
+                          >
+                            ✏️
+                          </button>
+                        </div>
+                      )}
+                    </div>
                     <div className="menu-item">
                       <strong>Status:</strong> 
                       <span className="verification-status verified">
@@ -117,6 +255,9 @@ const UserMenu = () => {
             ) : (
               <div className="menu-item">Not signed in</div>
             )}
+            <button className="menu-action-button" onClick={handleEditProfile}>
+              Edit Profile
+            </button>
             <button className="menu-action-button" onClick={handleReportLicensePlate}>
               Report License Plate
             </button>

@@ -55,6 +55,31 @@ def init_database():
             )
         """)
 
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS license_plate_reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                license_plate TEXT NOT NULL,
+                description TEXT NOT NULL,
+                reporter_email TEXT,
+                space_id INTEGER,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (space_id) REFERENCES places (id)
+            )
+        """)
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_email TEXT NOT NULL,
+                title TEXT NOT NULL,
+                message TEXT NOT NULL,
+                type TEXT DEFAULT 'info',
+                is_read BOOLEAN DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
         # Create indexes for better performance
         conn.execute("CREATE INDEX IF NOT EXISTS idx_parkers_email ON parkers(email)")
         conn.execute(
@@ -138,6 +163,19 @@ def get_parker_by_email(email: str) -> dict[str, Any] | None:
         return dict(row) if row else None
 
 
+def get_parker_by_license_plate(license_plate: str) -> dict[str, Any] | None:
+    """Get parker by license plate"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            SELECT * FROM parkers WHERE license_plate = ?
+        """,
+            (license_plate,),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
 def get_provider_by_email(email: str) -> dict[str, Any] | None:
     """Get provider by email"""
     with get_db() as conn:
@@ -162,6 +200,41 @@ def get_parker_by_id(parker_id: int) -> dict[str, Any] | None:
         )
         row = cursor.fetchone()
         return dict(row) if row else None
+
+
+def update_parker_profile(email: str, username: str, license_plate: str | None = None) -> bool:
+    """Update parker profile fields"""
+    try:
+        with get_db() as conn:
+            # Parse license plate to extract state and number
+            license_plate_state = None
+            license_plate_number = None
+            
+            if license_plate and len(license_plate.strip()) > 0:
+                license_plate = license_plate.strip().upper()
+                if len(license_plate) >= 2:
+                    # Assume first 2 characters are state if they're letters
+                    potential_state = license_plate[:2]
+                    if potential_state.isalpha():
+                        license_plate_state = potential_state
+                        license_plate_number = license_plate[2:]
+                    else:
+                        license_plate_number = license_plate
+                else:
+                    license_plate_number = license_plate
+            
+            cursor = conn.execute(
+                """
+                UPDATE parkers 
+                SET username = ?, license_plate = ?, license_plate_state = ? 
+                WHERE email = ?
+                """,
+                (username, license_plate_number, license_plate_state, email),
+            )
+            return cursor.rowcount > 0
+    except Exception as e:
+        print(f"Error updating parker profile: {e}")
+        return False
 
 
 def get_provider_by_id(provider_id: int) -> dict[str, Any] | None:
@@ -366,4 +439,87 @@ def get_place_count() -> int:
     """Get total number of places"""
     with get_db() as conn:
         cursor = conn.execute("SELECT COUNT(*) FROM places")
+        return cursor.fetchone()[0]
+
+
+# License plate report operations
+def create_license_plate_report(
+    license_plate: str, description: str, reporter_email: str | None = None, space_id: int | None = None
+) -> int:
+    """Create a new license plate report and return the report ID"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO license_plate_reports (license_plate, description, reporter_email, space_id)
+            VALUES (?, ?, ?, ?)
+        """,
+            (license_plate, description, reporter_email, space_id),
+        )
+        return cursor.lastrowid or 0
+
+
+def get_license_plate_reports(limit: int = 100) -> list[dict[str, Any]]:
+    """Get all license plate reports"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            SELECT * FROM license_plate_reports 
+            ORDER BY created_at DESC 
+            LIMIT ?
+        """,
+            (limit,),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+# Notification operations
+def create_notification(
+    user_email: str, title: str, message: str, notification_type: str = "info"
+) -> int:
+    """Create a new notification and return the notification ID"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO notifications (user_email, title, message, type)
+            VALUES (?, ?, ?, ?)
+        """,
+            (user_email, title, message, notification_type),
+        )
+        return cursor.lastrowid or 0
+
+
+def get_user_notifications(user_email: str, unread_only: bool = False) -> list[dict[str, Any]]:
+    """Get notifications for a user"""
+    with get_db() as conn:
+        query = """
+            SELECT * FROM notifications 
+            WHERE user_email = ?
+        """
+        params = [user_email]
+        
+        if unread_only:
+            query += " AND is_read = 0"
+        
+        query += " ORDER BY created_at DESC LIMIT 50"
+        
+        cursor = conn.execute(query, params)
+        return [dict(row) for row in cursor.fetchall()]
+
+
+def mark_notification_read(notification_id: int) -> bool:
+    """Mark a notification as read"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            "UPDATE notifications SET is_read = 1 WHERE id = ?", (notification_id,)
+        )
+        return cursor.rowcount > 0
+
+
+def get_unread_notification_count(user_email: str) -> int:
+    """Get count of unread notifications for a user"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            "SELECT COUNT(*) FROM notifications WHERE user_email = ? AND is_read = 0",
+            (user_email,),
+        )
         return cursor.fetchone()[0]

@@ -206,6 +206,100 @@ class ApiService {
       throw error;
     }
   }
+
+  async reportLicensePlate(reportData) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/reports/license-plate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(reportData),
+      });
+      if (!response.ok) {
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorMessage;
+        } catch (e) {
+          // If we can't parse the error response, use the generic message
+        }
+        throw new Error(errorMessage);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error reporting license plate:', error);
+      throw error;
+    }
+  }
+
+  // Notification methods
+  async getNotifications(email) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/notifications?email=${encodeURIComponent(email)}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting notifications:', error);
+      throw error;
+    }
+  }
+
+  async getUnreadCount(email) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/notifications/unread-count?email=${encodeURIComponent(email)}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting unread count:', error);
+      throw error;
+    }
+  }
+
+  async markNotificationRead(notificationId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/notifications/${notificationId}/read`, {
+        method: 'PUT',
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      throw error;
+    }
+  }
+
+  async updateProfile(userData) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/update-profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
+      if (!response.ok) {
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorMessage;
+        } catch (e) {
+          // If we can't parse the error response, use the generic message
+        }
+        throw new Error(errorMessage);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      throw error;
+    }
+  }
 }
 
 export default new ApiService();

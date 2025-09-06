@@ -1,4 +1,4 @@
-.complete-registration-container {
+.edit-profile-container {
   min-height: 100vh;
   background: #f3f5f7;
   display: flex;
@@ -7,7 +7,7 @@
   padding: 20px;
 }
 
-.registration-card {
+.edit-profile-card {
   background: white;
   border-radius: 16px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
@@ -16,33 +16,46 @@
   overflow: hidden;
 }
 
-.registration-header {
+.edit-profile-header {
   background: #2f3a4a;
   color: white;
   padding: 30px;
   text-align: center;
+  position: relative;
 }
 
-.registration-header h1 {
+.back-button {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.back-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.edit-profile-header h1 {
   margin: 0 0 10px 0;
   font-size: 28px;
   font-weight: 600;
 }
 
-.registration-header p {
-  margin: 0 0 20px 0;
+.edit-profile-header p {
+  margin: 0;
   opacity: 0.9;
   font-size: 16px;
 }
 
-.user-info {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 12px;
-  border-radius: 8px;
-  font-size: 14px;
-}
-
-.registration-form {
+.edit-profile-form {
   padding: 30px;
 }
 
@@ -85,6 +98,16 @@
   font-style: italic;
 }
 
+.success-message {
+  background: #e8f5e8;
+  color: #2e7d32;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin: 16px 0;
+  border: 1px solid #c8e6c9;
+  font-size: 14px;
+}
+
 .error-message {
   background: #ffebee;
   color: #c62828;
@@ -99,7 +122,7 @@
   margin-top: 32px;
 }
 
-.register-button {
+.update-button {
   width: 100%;
   background: #2196F3;
   color: white;
@@ -112,55 +135,37 @@
   transition: all 0.2s ease;
 }
 
-.register-button:hover:not(:disabled) {
+.update-button:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(33, 150, 243, 0.3);
 }
 
-.register-button:disabled {
+.update-button:disabled {
   background: #ccc;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
 }
 
-.registration-footer {
-  background: #f8f9fa;
-  padding: 20px 30px;
-  text-align: center;
-  border-top: 1px solid #e9ecef;
-}
-
-.registration-footer p {
-  margin: 0;
-  font-size: 12px;
-  color: #6c757d;
-  line-height: 1.4;
-}
-
 /* Mobile responsiveness */
 @media (max-width: 600px) {
-  .complete-registration-container {
+  .edit-profile-container {
     padding: 10px;
   }
   
-  .registration-card {
+  .edit-profile-card {
     margin: 0;
   }
   
-  .registration-header {
+  .edit-profile-header {
     padding: 20px;
   }
   
-  .registration-header h1 {
+  .edit-profile-header h1 {
     font-size: 24px;
   }
   
-  .registration-form {
+  .edit-profile-form {
     padding: 20px;
-  }
-  
-  .registration-footer {
-    padding: 15px 20px;
   }
 }

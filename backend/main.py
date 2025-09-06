@@ -329,6 +329,44 @@ async def get_user_profile(email: str):
     raise HTTPException(status_code=404, detail="User profile not found")
 
 
+@app.put("/users/update-profile")
+async def update_user_profile(user_data: UserRegister):
+    """Update user profile by email"""
+    try:
+        # Get current user profile
+        parker = db.get_parker_by_email(user_data.email)
+        if not parker:
+            raise HTTPException(status_code=404, detail="User profile not found")
+        
+        # Update the parker record
+        success = db.update_parker_profile(
+            email=user_data.email,
+            username=user_data.name,
+            license_plate=user_data.car_license_plate
+        )
+        
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to update profile")
+            
+        # Return updated profile
+        updated_parker = db.get_parker_by_email(user_data.email)
+        return {
+            "id": updated_parker["id"],
+            "email": updated_parker["email"],
+            "username": updated_parker["username"],
+            "user_type": user_data.user_type,
+            "license_plate": updated_parker["license_plate"],
+            "license_plate_state": updated_parker["license_plate_state"],
+            "is_active": updated_parker["is_active"],
+            "created_at": updated_parker["created_at"],
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error updating profile: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update profile")
+
+
 @app.get("/spaces", response_model=list[ParkingSpaceResponse])
 async def get_spaces(limit: Annotated[int, Query(ge=1, le=10000)] = 100):
     places = db.get_published_places(limit=limit)
@@ -724,21 +762,75 @@ async def get_space_bookings(space_id: Annotated[int, Path(ge=0, le=2147483647)]
 
 @app.post("/reports/license-plate", responses={501: {"description": "Not implemented"}})
 async def report_license_plate(report: ReportLicensePlate):
-    # Teammate is adding database logic
-    # Using report parameter to avoid unused variable warning
-    _ = report
-    raise HTTPException(
-        status_code=501,
-        detail="License plate reporting is being implemented by teammate",
-    )
+    try:
+        # Create the license plate report
+        report_id = db.create_license_plate_report(
+            license_plate=report.license_plate,
+            description=report.description,
+            reporter_email=report.reporter_email,
+            space_id=report.space_id
+        )
+        
+        # Find the owner of the reported license plate and send notification
+        parker = db.get_parker_by_license_plate(report.license_plate)
+        if parker:
+            # Create notification for the owner of the license plate
+            db.create_notification(
+                user_email=parker["email"],
+                title="License Plate Reported",
+                message=f"Your license plate {report.license_plate} has been reported. Reason: {report.description}",
+                notification_type="warning"
+            )
+            
+        return {"message": "License plate report submitted successfully", "report_id": report_id}
+    except Exception as e:
+        print(f"Error creating license plate report: {e}")
+        raise HTTPException(status_code=500, detail="Failed to submit report")
 
 
 @app.get("/reports", responses={501: {"description": "Not implemented"}})
 async def get_reports():
-    # Teammate is adding database logic
-    raise HTTPException(
-        status_code=501, detail="Report viewing is being implemented by teammate"
-    )
+    try:
+        reports = db.get_license_plate_reports()
+        return reports
+    except Exception as e:
+        print(f"Error getting reports: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get reports")
+
+
+@app.get("/notifications")
+async def get_user_notifications(email: str):
+    """Get notifications for a user"""
+    try:
+        notifications = db.get_user_notifications(email)
+        return notifications
+    except Exception as e:
+        print(f"Error getting notifications: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get notifications")
+
+
+@app.get("/notifications/unread-count")
+async def get_unread_count(email: str):
+    """Get count of unread notifications for a user"""
+    try:
+        count = db.get_unread_notification_count(email)
+        return {"unread_count": count}
+    except Exception as e:
+        print(f"Error getting unread count: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get unread count")
+
+
+@app.put("/notifications/{notification_id}/read")
+async def mark_notification_read(notification_id: int):
+    """Mark a notification as read"""
+    try:
+        success = db.mark_notification_read(notification_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Notification not found")
+        return {"message": "Notification marked as read"}
+    except Exception as e:
+        print(f"Error marking notification as read: {e}")
+        raise HTTPException(status_code=500, detail="Failed to mark notification as read")
 
 
 if __name__ == "__main__":
