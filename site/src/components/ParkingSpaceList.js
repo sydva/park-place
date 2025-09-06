@@ -83,16 +83,6 @@ const ParkingSpaceListItem = ({ space, userLocation, onSpaceClick, onSpaceSelect
           )}
         </div>
       )}
-      
-      <button 
-        className="select-space-btn"
-        onClick={(e) => {
-          e.stopPropagation();
-          onSpaceSelect(space);
-        }}
-      >
-        Select
-      </button>
     </div>
   );
 };

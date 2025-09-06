@@ -251,8 +251,11 @@ def search_places_by_location(
     """Search places within radius of given coordinates"""
     with get_db() as conn:
         # Simple bounding box search (for MVP - in production use PostGIS)
-        lat_delta = radius_km / 111.0  # rough conversion
-        lng_delta = radius_km / (111.0 * abs(lat) if lat != 0 else 111.0)
+        # 1 degree of latitude ≈ 111 km
+        lat_delta = radius_km / 111.0
+        # 1 degree of longitude varies by latitude
+        import math
+        lng_delta = radius_km / (111.0 * math.cos(math.radians(lat)))
 
         cursor = conn.execute(
             """

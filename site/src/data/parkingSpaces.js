@@ -88,28 +88,20 @@ const getVerificationReason = () => {
   return reasons[Math.floor(Math.random() * reasons.length)];
 };
 
-// Filter spaces based on zoom level (like Google Maps)
+// Filter spaces based on zoom level (like Google Maps) - More permissive for testing
 export const filterSpacesByZoom = (spaces, zoomLevel) => {
-  if (zoomLevel <= 14) {
-    // Very zoomed out - show only premium spaces
+  if (zoomLevel <= 12) {
+    // Very far out - show top spaces only
     return spaces
-      .filter(space => space.type === 'premium' && space.availability)
-      .slice(0, 10);
-  } else if (zoomLevel <= 16) {
-    // Medium zoom - show premium and high-rated standard spaces
+      .filter(space => space.availability)
+      .slice(0, 20);
+  } else if (zoomLevel <= 14) {
+    // Medium zoom - show most spaces
     return spaces
-      .filter(space => 
-        space.availability && 
-        (space.type === 'premium' || (space.type === 'standard' && space.rating > 4))
-      )
-      .slice(0, 25);
-  } else if (zoomLevel <= 18) {
-    // Close zoom - show most available spaces
-    return spaces
-      .filter(space => space.availability && space.rating > 3.5)
-      .slice(0, 50);
+      .filter(space => space.availability)
+      .slice(0, 40);
   } else {
-    // Very close - show all available spaces
+    // Close zoom - show all available spaces
     return spaces.filter(space => space.availability);
   }
 };

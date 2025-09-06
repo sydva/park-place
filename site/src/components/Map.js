@@ -8,7 +8,8 @@ import ParkingSpaceModal from './ParkingSpaceModal';
 import SearchBar from './SearchBar';
 import ParkingSpaceList from './ParkingSpaceList';
 import FilterModal from './FilterModal';
-import { generateParkingSpaces, filterSpacesByZoom } from '../data/parkingSpaces';
+import { filterSpacesByZoom } from '../data/parkingSpaces';
+import apiService from '../services/api';
 import './MapLayout.css';
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -29,6 +30,31 @@ const MapEventHandler = ({ onZoomChange, onMoveChange }) => {
       onMoveChange([center.lat, center.lng]);
     },
   });
+  return null;
+};
+
+// Invalidate map size when layout changes (e.g., sidebar collapse/expand)
+const ResizeHandler = ({ listVisible }) => {
+  const map = useMapEvents({});
+  useEffect(() => {
+    // Immediate invalidate without animation to reduce jank
+    try {
+      map.invalidateSize({ animate: false });
+    } catch (_) {}
+
+    // Invalidate again after the sidebar transition completes
+    const sidebar = document.querySelector('.parking-space-list');
+    if (!sidebar) return;
+    const onTransitionEnd = () => {
+      try {
+        map.invalidateSize({ animate: false });
+      } catch (_) {}
+    };
+    sidebar.addEventListener('transitionend', onTransitionEnd, { once: true });
+    return () => {
+      sidebar.removeEventListener('transitionend', onTransitionEnd);
+    };
+  }, [listVisible, map]);
   return null;
 };
 
@@ -58,36 +84,55 @@ const Map = () => {
   });
 
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setError('Geolocation is not supported by this browser.');
-      setLoading(false);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const userPos = [position.coords.latitude, position.coords.longitude];
-        setPosition(userPos);
-        setMapCenter(userPos);
-        
-        // Generate parking spaces around user location
-        const spaces = generateParkingSpaces(userPos[0], userPos[1]);
-        setParkingSpaces(spaces);
-        setFilteredSpaces(spaces);
-        setVisibleSpaces(filterSpacesByZoom(spaces, 16));
-        
+    const loadParkingData = async () => {
+      if (!navigator.geolocation) {
+        setError('Geolocation is not supported by this browser.');
         setLoading(false);
-      },
-      (error) => {
-        setError('Unable to retrieve your location: ' + error.message);
-        setLoading(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000
+        return;
       }
-    );
+
+      try {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const userPos = [position.coords.latitude, position.coords.longitude];
+            setPosition(userPos);
+            setMapCenter(userPos);
+            
+            // Load parking spaces from backend
+            try {
+              const spaces = await apiService.getNearbySpaces(userPos[0], userPos[1], 5.0);
+              setParkingSpaces(spaces);
+              setFilteredSpaces(spaces);
+              setVisibleSpaces(filterSpacesByZoom(spaces, 16));
+            } catch (apiError) {
+              console.error('Failed to load parking spaces from API:', apiError);
+              // Fallback to mock data if API fails
+              const { generateParkingSpaces } = await import('../data/parkingSpaces');
+              const fallbackSpaces = generateParkingSpaces(userPos[0], userPos[1]);
+              setParkingSpaces(fallbackSpaces);
+              setFilteredSpaces(fallbackSpaces);
+              setVisibleSpaces(filterSpacesByZoom(fallbackSpaces, 16));
+            }
+            
+            setLoading(false);
+          },
+          (error) => {
+            setError('Unable to retrieve your location: ' + error.message);
+            setLoading(false);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 60000
+          }
+        );
+      } catch (error) {
+        setError('Failed to initialize map: ' + error.message);
+        setLoading(false);
+      }
+    };
+
+    loadParkingData();
   }, []);
 
   if (loading) {
@@ -133,7 +178,7 @@ const Map = () => {
     setSelectedSpace(space);
   };
 
-  const handleLocationSearch = (location) => {
+  const handleLocationSearch = async (location) => {
     console.log('Navigating to location:', location);
     const newCenter = [location.lat, location.lng];
     
@@ -141,12 +186,20 @@ const Map = () => {
     setMapCenter(newCenter);
     setSearchLocation(location);
     
-    // Generate new parking spaces around the searched location
-    const newSpaces = generateParkingSpaces(location.lat, location.lng);
-    setParkingSpaces(newSpaces);
-    
-    // Apply current filters to new spaces
-    applyFilters(filters, newSpaces);
+    // Load new parking spaces around the searched location
+    try {
+      const newSpaces = await apiService.getNearbySpaces(location.lat, location.lng, 5.0);
+      setParkingSpaces(newSpaces);
+      // Apply current filters to new spaces
+      applyFilters(filters, newSpaces);
+    } catch (error) {
+      console.error('Failed to load parking spaces for search location:', error);
+      // Fallback to mock data if API fails
+      const { generateParkingSpaces } = await import('../data/parkingSpaces');
+      const fallbackSpaces = generateParkingSpaces(location.lat, location.lng);
+      setParkingSpaces(fallbackSpaces);
+      applyFilters(filters, fallbackSpaces);
+    }
   };
 
   const handleAmenityFilter = (tagId) => {
@@ -242,6 +295,8 @@ const Map = () => {
           onZoomChange={handleZoomChange} 
           onMoveChange={handleMoveChange}
         />
+        {/* Ensure map resizes after sidebar visibility changes */}
+        <ResizeHandler listVisible={listVisible} />
         {/* User location marker */}
         {position && (
           <Marker position={position}>

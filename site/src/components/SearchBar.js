@@ -187,16 +187,14 @@ const SearchBar = ({ onLocationSearch, onAmenityFilter, onFilterClick }) => {
                   ✕
                 </button>
               )}
+              <button type="button" className="filter-inline-btn" onClick={onFilterClick} aria-label="Open filters">
+                <Icon name="filter" size={16} />
+              </button>
               <button type="submit" className="submit-search-btn" aria-label="Search">
                 <Icon name="search" size={16} />
               </button>
             </div>
           </form>
-          
-          <button type="button" className="filter-btn" onClick={onFilterClick} aria-label="Open filters">
-            <Icon name="filter" size={18} />
-            <span>Filter</span>
-          </button>
         </div>
 
         {(showSuggestions || isLoading) && (

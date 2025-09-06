@@ -236,7 +236,9 @@
   }
 
   .parking-space-list.hidden {
-    transform: translateX(-338px); /* Hide all but ~12px for the toggle nub */
+    transform: translateX(-360px); /* Fully off-screen */
+    box-shadow: none; /* Prevent glow peeking */
+    border-right: none;
   }
 
   .parking-space-list.visible {
@@ -257,12 +259,12 @@
   }
   
   .parking-space-list.hidden .toggle-list-btn {
-    right: -22px; /* Position just outside the hidden panel */
+    right: -44px; /* Keep toggle reachable while panel is fully hidden */
     background: white;
     border: 1px solid #e0e0e0;
     border-radius: 50%;
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
   }
 

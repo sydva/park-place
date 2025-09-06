@@ -11,6 +11,15 @@
   display: block;
 }
 
+/* Button icon colors */
+.filter-btn .icon {
+  color: #fff;
+}
+
+.submit-search-btn .icon {
+  color: #2196F3;
+}
+
 .icon-fallback {
   display: inline-flex;
   align-items: center;

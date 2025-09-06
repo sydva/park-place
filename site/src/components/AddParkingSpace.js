@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import SimpleTagInput from './SimpleTagInput';
 import Icon from './Icon';
+import apiService from '../services/api';
 import './AddParkingSpace.css';
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -58,8 +59,11 @@ const AddParkingSpace = () => {
   const [loading, setLoading] = useState(true);
   const [pinPosition, setPinPosition] = useState(null);
   const [capturedImage, setCapturedImage] = useState(null);
+  const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [price, setPrice] = useState(0);
   const [tags, setTags] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
@@ -85,20 +89,45 @@ const AddParkingSpace = () => {
     }
   }, []);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!pinPosition) {
       alert('Please place a pin on the map to mark the parking space location.');
       return;
     }
 
-    // Ready for backend integration
-    console.log('Adding parking space at:', pinPosition);
-    console.log('Image:', capturedImage);
-    console.log('Description:', description);
-    console.log('Tags:', tags);
+    if (!title.trim()) {
+      alert('Please enter a title for the parking space.');
+      return;
+    }
 
-    navigate('/map');
+    if (!description.trim()) {
+      alert('Please enter a description for the parking space.');
+      return;
+    }
+
+    setSubmitting(true);
+    
+    try {
+      const spaceData = {
+        title: title.trim(),
+        description: description.trim(),
+        lat: pinPosition[0],
+        lng: pinPosition[1],
+        price: parseFloat(price) || 0,
+        tags: tags,
+        imageUrl: capturedImage // In a real app, we'd upload this to a file service first
+      };
+
+      await apiService.createSpace(spaceData);
+      console.log('Parking space created successfully!');
+      navigate('/map');
+    } catch (error) {
+      console.error('Error creating parking space:', error);
+      alert('Failed to create parking space. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleImageCapture = (e) => {
@@ -203,15 +232,50 @@ const AddParkingSpace = () => {
           </div>
 
           <div className="details-section">
-            <h2>Additional Details (Optional)</h2>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief description of the parking space..."
-              className="description-input"
-              rows="3"
-              maxLength="200"
-            />
+            <h2>Parking Space Details</h2>
+            
+            <div className="form-group">
+              <label htmlFor="title">Title *</label>
+              <input
+                type="text"
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g., Downtown garage spot, Driveway space..."
+                className="title-input"
+                maxLength="100"
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="description">Description *</label>
+              <textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Brief description of the parking space..."
+                className="description-input"
+                rows="3"
+                maxLength="200"
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="price">Price per hour ($)</label>
+              <input
+                type="number"
+                id="price"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="0.00"
+                className="price-input"
+                min="0"
+                step="0.50"
+              />
+              <small className="price-help">Set to 0 for free parking</small>
+            </div>
             
             <div className="tags-section">
               <h3>Features & Amenities</h3>
@@ -227,9 +291,9 @@ const AddParkingSpace = () => {
           <button
             type="submit"
             className="submit-button"
-            disabled={!pinPosition}
+            disabled={!pinPosition || submitting}
           >
-            Add Parking Space
+            {submitting ? 'Creating Space...' : 'Add Parking Space'}
           </button>
         </form>
       </div>

@@ -55,7 +55,7 @@ const CheckoutForm = ({ amount, onSuccess, onCancel, parkingSpace, selectedHours
       <div className="payment-summary">
         <h3>Payment Summary</h3>
         <div className="summary-row">
-          <span>Parking Space #{parkingSpace.id.split('-')[1]}</span>
+          <span>Parking Space #{parkingSpace.id}</span>
           <span>${parkingSpace.price}/{parkingSpace.paymentType === 'hourly' ? 'hr' : 'flat'}</span>
         </div>
         {parkingSpace.paymentType === 'hourly' && (

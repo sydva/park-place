@@ -22,7 +22,7 @@
   }
 
   .map-wrapper.sidebar-hidden {
-    left: 20px; /* smaller nub space to maximize map */
+    left: 0; /* Full edge-to-edge when sidebar hidden */
     right: 0;
   }
 }

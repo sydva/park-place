@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from backend import database as db
+import database as db
 
 
 # Temporary bookings storage until we add bookings table
