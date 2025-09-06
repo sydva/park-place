@@ -43,6 +43,8 @@ const Map = () => {
   const [selectedSpace, setSelectedSpace] = useState(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [listVisible, setListVisible] = useState(true);
+  const [mapCenter, setMapCenter] = useState(null);
+  const [searchLocation, setSearchLocation] = useState(null);
   const [filters, setFilters] = useState({
     tags: [],
     priceRange: [0, 20],
@@ -63,6 +65,7 @@ const Map = () => {
       (position) => {
         const userPos = [position.coords.latitude, position.coords.longitude];
         setPosition(userPos);
+        setMapCenter(userPos);
         
         // Generate parking spaces around user location
         const spaces = generateParkingSpaces(userPos[0], userPos[1]);
@@ -128,9 +131,19 @@ const Map = () => {
   };
 
   const handleLocationSearch = (location) => {
-    // Move map to searched location
-    console.log('Searching for location:', location);
-    // In real app, would update map center and generate new parking spaces
+    console.log('Navigating to location:', location);
+    const newCenter = [location.lat, location.lng];
+    
+    // Update map center and search location marker
+    setMapCenter(newCenter);
+    setSearchLocation(location);
+    
+    // Generate new parking spaces around the searched location
+    const newSpaces = generateParkingSpaces(location.lat, location.lng);
+    setParkingSpaces(newSpaces);
+    
+    // Apply current filters to new spaces
+    applyFilters(filters, newSpaces);
   };
 
   const handleAmenityFilter = (tagId) => {
@@ -148,8 +161,8 @@ const Map = () => {
     applyFilters(newFilters);
   };
 
-  const applyFilters = (currentFilters) => {
-    let filtered = [...parkingSpaces];
+  const applyFilters = (currentFilters, spacesToFilter = null) => {
+    let filtered = [...(spacesToFilter || parkingSpaces)];
 
     // Filter by availability
     if (currentFilters.availability === 'available') {
@@ -206,7 +219,7 @@ const Map = () => {
       {/* Main Map Container */}
       <div className="map-wrapper">
         <MapContainer 
-          center={position} 
+          center={mapCenter || position} 
           zoom={16} 
           style={{ 
             height: '100%', 
@@ -214,6 +227,7 @@ const Map = () => {
           }}
           zoomControl={false}
           attributionControl={false}
+          key={mapCenter ? `${mapCenter[0]}-${mapCenter[1]}` : 'default'}
         >
         <TileLayer
           attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>'
@@ -226,8 +240,24 @@ const Map = () => {
           onMoveChange={handleMoveChange}
         />
         {/* User location marker */}
-        <Marker position={position}>
-        </Marker>
+        {position && (
+          <Marker position={position}>
+          </Marker>
+        )}
+        
+        {/* Search location marker */}
+        {searchLocation && (
+          <Marker 
+            position={[searchLocation.lat, searchLocation.lng]}
+            icon={L.divIcon({
+              html: `<div style="background: #ff6b6b; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">🔍</div>`,
+              className: 'search-location-marker',
+              iconSize: [20, 20],
+              iconAnchor: [10, 10],
+            })}
+          >
+          </Marker>
+        )}
         {/* Parking space markers */}
         {visibleSpaces.map((space) => (
           <ParkingSpaceMarker 

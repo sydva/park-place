@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { searchTags, getAllTags } from '../data/parkingTags';
+import { searchLocations, debounce } from '../services/geocoding';
 import Icon from './Icon';
 import './SearchBar.css';
 
@@ -8,33 +9,53 @@ const SearchBar = ({ onLocationSearch, onAmenityFilter, onFilterClick }) => {
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchType, setSearchType] = useState('location'); // 'location' or 'amenity'
+  const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef(null);
   const suggestionsRef = useRef(null);
 
-  // Mock location suggestions - in real app, use geocoding API
-  const locationSuggestions = [
-    { type: 'location', name: 'Downtown', address: 'Downtown Area', lat: 37.7749, lng: -122.4194 },
-    { type: 'location', name: 'Union Square', address: 'Union Square, San Francisco', lat: 37.7880, lng: -122.4075 },
-    { type: 'location', name: 'Fisherman\'s Wharf', address: 'Fisherman\'s Wharf, San Francisco', lat: 37.8080, lng: -122.4177 },
-    { type: 'location', name: 'Mission District', address: 'Mission District, San Francisco', lat: 37.7599, lng: -122.4148 },
-    { type: 'location', name: 'Castro District', address: 'Castro District, San Francisco', lat: 37.7609, lng: -122.4350 },
-  ];
+  // Debounced search function
+  const debouncedLocationSearch = useRef(
+    debounce(async (query) => {
+      if (query.length < 3) {
+        setSuggestions([]);
+        setShowSuggestions(false);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const results = await searchLocations(query);
+        const formattedResults = results.map(result => ({
+          type: 'location',
+          name: result.name,
+          fullName: result.fullName,
+          address: result.formattedAddress,
+          lat: result.lat,
+          lng: result.lng
+        }));
+        
+        setSuggestions(formattedResults.slice(0, 5));
+        setShowSuggestions(true);
+      } catch (error) {
+        console.error('Search error:', error);
+        setSuggestions([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 300)
+  ).current;
 
   useEffect(() => {
     if (searchValue.length === 0) {
       setSuggestions([]);
       setShowSuggestions(false);
+      setIsLoading(false);
       return;
     }
 
-    let newSuggestions = [];
-
     if (searchType === 'location') {
-      // Filter location suggestions
-      newSuggestions = locationSuggestions.filter(location =>
-        location.name.toLowerCase().includes(searchValue.toLowerCase()) ||
-        location.address.toLowerCase().includes(searchValue.toLowerCase())
-      );
+      setIsLoading(true);
+      debouncedLocationSearch(searchValue);
     } else {
       // Filter amenity/tag suggestions
       const tagSuggestions = searchTags(searchValue).map(tag => ({
@@ -44,12 +65,10 @@ const SearchBar = ({ onLocationSearch, onAmenityFilter, onFilterClick }) => {
         description: tag.description,
         icon: tag.icon
       }));
-      newSuggestions = tagSuggestions;
+      setSuggestions(tagSuggestions.slice(0, 5));
+      setShowSuggestions(tagSuggestions.length > 0);
     }
-
-    setSuggestions(newSuggestions.slice(0, 5));
-    setShowSuggestions(true);
-  }, [searchValue, searchType]);
+  }, [searchValue, searchType, debouncedLocationSearch]);
 
   // Handle clicking outside
   useEffect(() => {
@@ -84,12 +103,21 @@ const SearchBar = ({ onLocationSearch, onAmenityFilter, onFilterClick }) => {
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && suggestions.length > 0) {
+    if (e.key === 'Enter') {
       e.preventDefault();
-      handleSuggestionClick(suggestions[0]);
+      if (suggestions.length > 0) {
+        handleSuggestionClick(suggestions[0]);
+      }
     } else if (e.key === 'Escape') {
       setShowSuggestions(false);
       inputRef.current?.blur();
+    }
+  };
+
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    if (suggestions.length > 0) {
+      handleSuggestionClick(suggestions[0]);
     }
   };
 
@@ -114,72 +142,87 @@ const SearchBar = ({ onLocationSearch, onAmenityFilter, onFilterClick }) => {
             className={`search-tab ${searchType === 'location' ? 'active' : ''}`}
             onClick={() => setSearchType('location')}
           >
-            📍 Location
+            <Icon name="map-pin" size={16} className="suggestion-icon location-icon" />
+            <span>Location</span>
           </button>
           <button 
             className={`search-tab ${searchType === 'amenity' ? 'active' : ''}`}
             onClick={() => setSearchType('amenity')}
           >
-            🏷️ Amenities
+            <Icon name="tag" size={16} className="suggestion-icon" />
+            <span>Amenities</span>
           </button>
         </div>
 
         <div className="search-input-container">
-          <div className="search-input-wrapper">
-            <input
-              ref={inputRef}
-              type="text"
-              value={searchValue}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyDown}
-              onFocus={handleFocus}
-              placeholder={
-                searchType === 'location' 
-                  ? 'Search locations...' 
-                  : 'Search amenities (covered, EV charging, etc.)'
-              }
-              className="search-input"
-            />
-            {searchValue && (
-              <button className="clear-search-btn" onClick={clearSearch}>
-                ✕
-              </button>
-            )}
-          </div>
+          <form onSubmit={handleFormSubmit} className="search-form">
+            <div className="search-input-wrapper">
+              <input
+                ref={inputRef}
+                type="text"
+                value={searchValue}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                onFocus={handleFocus}
+                placeholder={
+                  searchType === 'location' 
+                    ? 'Search locations...' 
+                    : 'Search amenities (covered, EV charging, etc.)'
+                }
+                className="search-input"
+              />
+              {searchValue && (
+                <button type="button" className="clear-search-btn" onClick={clearSearch}>
+                  ✕
+                </button>
+              )}
+            </div>
+          </form>
           
-          <button className="filter-btn" onClick={onFilterClick}>
+          <button type="button" className="filter-btn" onClick={onFilterClick}>
             <Icon name="filter" size={18} />
             <span>Filter</span>
           </button>
         </div>
 
-        {showSuggestions && suggestions.length > 0 && (
+        {(showSuggestions || isLoading) && (
           <div ref={suggestionsRef} className="search-suggestions">
-            {suggestions.map((suggestion, index) => (
-              <button
-                key={index}
-                className="suggestion-item"
-                onClick={() => handleSuggestionClick(suggestion)}
-              >
-                {suggestion.type === 'location' ? (
-                  <>
-                    <span className="suggestion-icon">📍</span>
-                    <div className="suggestion-content">
-                      <span className="suggestion-name">{suggestion.name}</span>
-                      <span className="suggestion-address">{suggestion.address}</span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <Icon name={suggestion.icon} size={16} className="suggestion-icon" />
-                    <div className="suggestion-content">
-                      <span className="suggestion-name">{suggestion.name}</span>
-                      <span className="suggestion-description">{suggestion.description}</span>
-                    </div>
-                  </>
-                )}
-              </button>
-            ))}
+            {isLoading ? (
+              <div className="suggestion-loading">
+                <div className="loading-spinner"></div>
+                <span>Searching locations...</span>
+              </div>
+            ) : suggestions.length > 0 ? (
+              suggestions.map((suggestion, index) => (
+                <button
+                  key={index}
+                  className="suggestion-item"
+                  onClick={() => handleSuggestionClick(suggestion)}
+                >
+                  {suggestion.type === 'location' ? (
+                    <>
+                      <Icon name="map-pin" size={16} className="suggestion-icon location-icon" />
+                      <div className="suggestion-content">
+                        <span className="suggestion-name">{suggestion.name}</span>
+                        <span className="suggestion-address">{suggestion.address}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <Icon name={suggestion.icon} size={16} className="suggestion-icon" />
+                      <div className="suggestion-content">
+                        <span className="suggestion-name">{suggestion.name}</span>
+                        <span className="suggestion-description">{suggestion.description}</span>
+                      </div>
+                    </>
+                  )}
+                </button>
+              ))
+            ) : searchType === 'location' && searchValue.length >= 3 ? (
+              <div className="no-suggestions">
+                <span>No locations found for "{searchValue}"</span>
+              </div>
+            ) : null}
           </div>
         )}
       </div>
