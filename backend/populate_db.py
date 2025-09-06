@@ -4,6 +4,7 @@ Script to populate the database with test parking spaces
 """
 
 import random
+
 import database as db
 
 # Test user data
@@ -226,7 +227,7 @@ def populate_database():
     db.init_database()
 
     print("Creating test users...")
-    parker_ids = []
+    parker_ids: list[int] = []
     for user in TEST_USERS:
         try:
             parker_id = db.create_parker(
@@ -241,7 +242,7 @@ def populate_database():
             print(f"  ⚠ Failed to create parker {user['username']}: {e}")
 
     print("Creating test providers...")
-    provider_ids = []
+    provider_ids: list[int] = []
     for provider in TEST_PROVIDERS:
         try:
             provider_id = db.create_provider(
@@ -255,13 +256,13 @@ def populate_database():
             print(f"  ⚠ Failed to create provider {provider['username']}: {e}")
 
     print("Creating test parking spaces...")
-    all_user_ids = parker_ids + provider_ids
+    all_user_ids: list[int] = parker_ids + provider_ids
 
     if not all_user_ids:
         print("  ❌ No users created, cannot create parking spaces")
         return
 
-    for i, space in enumerate(SF_PARKING_SPACES):
+    for _i, space in enumerate(SF_PARKING_SPACES):
         try:
             # Randomly assign each space to a user
             added_by = random.choice(all_user_ids)
@@ -272,13 +273,13 @@ def populate_database():
             )
 
             place_id = db.create_place(
-                title=space["title"],
-                description=space["description"],
+                title=str(space["title"]),
+                description=str(space["description"]),
                 added_by=added_by,
                 owned_by=owned_by,
-                latitude=space["latitude"],
-                longitude=space["longitude"],
-                address=space["address"],
+                latitude=float(space["latitude"]),
+                longitude=float(space["longitude"]),
+                address=str(space["address"]),
             )
             print(f"  ✓ Created parking space: {space['title']} (ID: {place_id})")
         except Exception as e:
