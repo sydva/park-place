@@ -189,3 +189,4 @@ python backend/tests/test_cli_schemathesis.py
 * NEVER write defensive code, or work around errors.  We should crash early and often.
 * After you've written some code, do a second editing pass to make it concise and idiomatic.  For example, minimal use of comments.
 * Run pre-commit checks after each edit, to check that it's in good shape.
+* **ALWAYS use Pydantic for validation** - Never validate in endpoint methods. All validation should be done via Pydantic models using Field constraints, validators, or Annotated types. This ensures validation rules appear in the OpenAPI schema and are properly documented.

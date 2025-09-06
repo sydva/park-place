@@ -255,6 +255,7 @@ def search_places_by_location(
         lat_delta = radius_km / 111.0
         # 1 degree of longitude varies by latitude
         import math
+
         lng_delta = radius_km / (111.0 * math.cos(math.radians(lat)))
 
         cursor = conn.execute(

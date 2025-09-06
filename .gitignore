@@ -3,6 +3,7 @@
 app.db
 *.db
 uploads/
+backend/tests/*.txt
 
 
 # Byte-compiled / optimized / DLL files

@@ -2,6 +2,7 @@
 """
 Script to populate the database with test parking spaces
 """
+
 import random
 import database as db
 
@@ -9,7 +10,11 @@ import database as db
 TEST_USERS = [
     {"email": "john@example.com", "username": "john_parker", "license_plate": "ABC123"},
     {"email": "sara@example.com", "username": "sara_driver", "license_plate": "XYZ789"},
-    {"email": "mike@example.com", "username": "mike_commuter", "license_plate": "DEF456"},
+    {
+        "email": "mike@example.com",
+        "username": "mike_commuter",
+        "license_plate": "DEF456",
+    },
 ]
 
 TEST_PROVIDERS = [
@@ -171,7 +176,7 @@ SF_PARKING_SPACES = [
         "address": "123 Pine St, San Francisco, CA",
     },
     {
-        "title": "Pine Street Spot B", 
+        "title": "Pine Street Spot B",
         "description": "Another downtown street spot",
         "latitude": 37.7881,
         "longitude": -122.4077,
@@ -214,11 +219,12 @@ SF_PARKING_SPACES = [
     },
 ]
 
+
 def populate_database():
     """Populate database with test data"""
     print("Initializing database...")
     db.init_database()
-    
+
     print("Creating test users...")
     parker_ids = []
     for user in TEST_USERS:
@@ -227,13 +233,13 @@ def populate_database():
                 email=user["email"],
                 username=user["username"],
                 hashed_password="test_hash_" + user["username"],
-                license_plate=user["license_plate"]
+                license_plate=user["license_plate"],
             )
             parker_ids.append(parker_id)
             print(f"  ✓ Created parker: {user['username']} (ID: {parker_id})")
         except Exception as e:
             print(f"  ⚠ Failed to create parker {user['username']}: {e}")
-    
+
     print("Creating test providers...")
     provider_ids = []
     for provider in TEST_PROVIDERS:
@@ -241,26 +247,30 @@ def populate_database():
             provider_id = db.create_provider(
                 email=provider["email"],
                 username=provider["username"],
-                hashed_password="test_hash_" + provider["username"]
+                hashed_password="test_hash_" + provider["username"],
             )
             provider_ids.append(provider_id)
             print(f"  ✓ Created provider: {provider['username']} (ID: {provider_id})")
         except Exception as e:
             print(f"  ⚠ Failed to create provider {provider['username']}: {e}")
-    
+
     print("Creating test parking spaces...")
     all_user_ids = parker_ids + provider_ids
-    
+
     if not all_user_ids:
         print("  ❌ No users created, cannot create parking spaces")
         return
-    
+
     for i, space in enumerate(SF_PARKING_SPACES):
         try:
             # Randomly assign each space to a user
             added_by = random.choice(all_user_ids)
-            owned_by = random.choice(provider_ids) if provider_ids and random.random() > 0.3 else None
-            
+            owned_by = (
+                random.choice(provider_ids)
+                if provider_ids and random.random() > 0.3
+                else None
+            )
+
             place_id = db.create_place(
                 title=space["title"],
                 description=space["description"],
@@ -268,16 +278,16 @@ def populate_database():
                 owned_by=owned_by,
                 latitude=space["latitude"],
                 longitude=space["longitude"],
-                address=space["address"]
+                address=space["address"],
             )
             print(f"  ✓ Created parking space: {space['title']} (ID: {place_id})")
         except Exception as e:
             print(f"  ⚠ Failed to create parking space {space['title']}: {e}")
-    
+
     # Print summary
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("DATABASE POPULATION COMPLETE")
-    print("="*50)
+    print("=" * 50)
     print(f"Total parkers: {db.get_parker_count()}")
     print(f"Total providers: {db.get_provider_count()}")
     print(f"Total parking spaces: {db.get_place_count()}")
@@ -286,6 +296,7 @@ def populate_database():
     print("API endpoints:")
     print("  - GET http://localhost:8000/spaces")
     print("  - GET http://localhost:8000/spaces/nearby?lat=37.7749&lng=-122.4194")
+
 
 if __name__ == "__main__":
     populate_database()

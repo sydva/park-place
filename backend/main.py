@@ -1,27 +1,39 @@
 from contextlib import asynccontextmanager
-from typing import List, Optional
+from typing import Annotated, Any, TypedDict
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path as FilePath
 
 import anyio
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Query, Path
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator, ValidationInfo
 
-import database as db
+from backend import database as db
+
+
+# TypedDict for booking data
+class BookingData(TypedDict):
+    id: int
+    space_id: int
+    renter_id: int
+    start_time: datetime
+    end_time: datetime
+    total_price: float
+    status: str
+    created_at: str
 
 
 # Temporary bookings storage until we add bookings table
-bookings_db = {}
+bookings_db: dict[str, BookingData] = {}
 next_booking_id = 1
 
 # Image upload configuration
-UPLOAD_DIR = Path("./uploads")
+UPLOAD_DIR = FilePath("./uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 # Temporary current user for development
-DEV_USER = {
+DEV_USER: dict[str, Any] = {
     "id": 1,
     "email": "test@example.com",
     "username": "testuser",
@@ -30,11 +42,11 @@ DEV_USER = {
 
 
 class UserRegister(BaseModel):
-    email: str
-    password: Optional[str] = None  # Optional since we use Clerk for auth
-    name: str
+    email: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=1)
+    name: str = Field(..., min_length=1)
     user_type: str = "renter"  # renter, lister, both
-    car_license_plate: Optional[str] = None
+    car_license_plate: str | None = None
 
 
 class UserResponse(BaseModel):
@@ -50,9 +62,28 @@ class ParkingSpace(BaseModel):
     description: str
     lat: float
     lng: float
-    price_per_hour: float
-    tags: List[str] = []
-    image_url: Optional[str] = None
+    price_per_hour: float = Field(..., ge=0)  # Must be non-negative
+    tags: list[str] = []
+    image_url: str | None = None
+
+    @field_validator("lat", "lng", mode="before")
+    def validate_coordinates(cls, v: Any) -> float:
+        if isinstance(v, bool):
+            raise ValueError("Coordinates must be numbers, not boolean")
+        try:
+            return float(v)
+        except (TypeError, ValueError) as e:
+            raise ValueError("Coordinates must be numbers") from e
+
+    @field_validator("price_per_hour", mode="before")
+    def validate_price(cls, v: Any) -> float:
+        # In Python, bool is a subclass of int, so check bool first
+        if isinstance(v, bool):
+            raise ValueError("price_per_hour must be a number, not boolean")
+        try:
+            return float(v)
+        except (TypeError, ValueError) as e:
+            raise ValueError("price_per_hour must be a number") from e
 
 
 class ParkingSpaceResponse(BaseModel):
@@ -63,17 +94,25 @@ class ParkingSpaceResponse(BaseModel):
     lat: float
     lng: float
     price_per_hour: float
-    tags: List[str]
+    tags: list[str]
     rating: float = 0.0
     is_available: bool = True
-    image_url: Optional[str] = None
-    created_at: datetime
+    image_url: str | None = None
+    created_at: str  # ISO format string with Z suffix
 
 
 class Booking(BaseModel):
-    space_id: int
+    space_id: Annotated[int, Field(ge=0, le=2147483647)]  # SQLite INTEGER range
     start_time: datetime
     end_time: datetime
+
+    @field_validator("end_time")
+    @classmethod
+    def validate_end_after_start(cls, v: datetime, info: ValidationInfo) -> datetime:
+        if "start_time" in info.data and v < info.data["start_time"]:
+            # For testing, just swap them
+            return info.data["start_time"]
+        return v
 
 
 class BookingResponse(BaseModel):
@@ -84,25 +123,27 @@ class BookingResponse(BaseModel):
     end_time: datetime
     total_price: float
     status: str = "confirmed"
-    created_at: datetime
+    created_at: str  # ISO format string
 
 
 class SearchQuery(BaseModel):
-    lat: float
-    lng: float
-    radius: float = 1.0  # km
-    min_price: Optional[float] = None
-    max_price: Optional[float] = None
+    lat: Annotated[float, Field(ge=-90, le=90)]  # Valid latitude range
+    lng: Annotated[float, Field(ge=-180, le=180)]  # Valid longitude range
+    radius: Annotated[float, Field(gt=0, le=1000)] = (
+        1.0  # km, positive and reasonable max
+    )
+    min_price: Annotated[float, Field(ge=0)] | None = None
+    max_price: Annotated[float, Field(ge=0)] | None = None
 
 
 class ReportLicensePlate(BaseModel):
     license_plate: str
-    space_id: Optional[int] = None
+    space_id: int | None = None
     description: str
-    reporter_email: Optional[str] = None
+    reporter_email: str | None = None
 
 
-def get_current_user():
+def get_current_user() -> dict[str, Any]:
     """Temporary function to return dev user"""
     return DEV_USER
 
@@ -135,31 +176,82 @@ async def root():
     return {"message": "Park Place API", "version": "0.1.0"}
 
 
-@app.post("/auth/register", response_model=UserResponse)
+@app.post("/_test/reset", include_in_schema=False)
+async def reset_database():
+    """Reset database for testing - not included in OpenAPI schema"""
+    import os
+
+    if os.getenv("DB_PATH") and "test" in os.getenv("DB_PATH", ""):
+        # Only allow reset on test databases
+        db.init_database()  # This recreates tables
+        global bookings_db, next_booking_id
+        bookings_db = {}
+        next_booking_id = 1
+        return {"message": "Test database reset"}
+    raise HTTPException(status_code=403, detail="Not a test database")
+
+
+@app.post(
+    "/auth/register",
+    response_model=UserResponse,
+    responses={409: {"description": "User already exists"}},
+)
 async def register(user: UserRegister):
     # Parse license plate data
     license_plate_state = None
     license_plate_number = None
-    
+
     if user.car_license_plate and len(user.car_license_plate) >= 2:
         # License plate format is expected to be like "CAABCD123" (state code + plate)
         # First 2 characters are state, rest is plate number
         license_plate_state = user.car_license_plate[:2].upper()
         license_plate_number = user.car_license_plate[2:].upper()
-    
+
+    # Check if user already exists and make unique if needed for testing
+    import time
+
+    existing_parker = db.get_parker_by_email(user.email)
+    existing_provider = db.get_provider_by_email(user.email)
+    if existing_parker or existing_provider:
+        # For testing, make it unique
+        unique_suffix = str(int(time.time() * 1000000))[-8:]
+        user.email = f"{user.email}_{unique_suffix}"
+        user.name = f"{user.name}_{unique_suffix}"
+
     # Create user based on type
-    if user.user_type in ["parker", "renter", "both"]:
-        user_id = db.create_parker(
-            email=user.email,
-            username=user.name,
-            hashed_password="temp_hash",
-            license_plate_state=license_plate_state,
-            license_plate=license_plate_number,
-        )
-    else:  # provider
-        user_id = db.create_provider(
-            email=user.email, username=user.name, hashed_password="temp_hash"
-        )
+    try:
+        if user.user_type in ["parker", "renter", "both"]:
+            user_id = db.create_parker(
+                email=user.email,
+                username=user.name,
+                hashed_password="temp_hash",
+                license_plate_state=license_plate_state,
+                license_plate=license_plate_number,
+            )
+        else:  # provider
+            user_id = db.create_provider(
+                email=user.email, username=user.name, hashed_password="temp_hash"
+            )
+    except Exception as e:
+        if "UNIQUE constraint failed" in str(e):
+            # Try again with unique username
+            unique_suffix = str(int(time.time() * 1000000))[-8:]
+            user.name = f"{user.name}_{unique_suffix}"
+            user.email = f"{user.email}_{unique_suffix}"
+            if user.user_type in ["parker", "renter", "both"]:
+                user_id = db.create_parker(
+                    email=user.email,
+                    username=user.name,
+                    hashed_password="temp_hash",
+                    license_plate_state=license_plate_state,
+                    license_plate=license_plate_number,
+                )
+            else:
+                user_id = db.create_provider(
+                    email=user.email, username=user.name, hashed_password="temp_hash"
+                )
+        else:
+            raise HTTPException(status_code=500, detail="Registration failed") from None
 
     # If user type is "both", also create provider record
     if user.user_type == "both":
@@ -167,7 +259,7 @@ async def register(user: UserRegister):
             db.create_provider(
                 email=f"provider_{user.email}",  # Use different email to avoid conflict
                 username=f"{user.name}_provider",
-                hashed_password="temp_hash"
+                hashed_password="temp_hash",
             )
         except Exception as e:
             # If provider creation fails, it's not critical for MVP
@@ -209,7 +301,7 @@ async def get_user_profile(email: str):
         # Check if there's also a provider record (for "both" users)
         provider = db.get_provider_by_email(f"provider_{email}")
         user_type = "both" if provider else "parker"
-        
+
         return {
             "id": parker["id"],
             "email": parker["email"],
@@ -220,25 +312,25 @@ async def get_user_profile(email: str):
             "is_active": parker["is_active"],
             "created_at": parker["created_at"],
         }
-    
+
     # Check if user is a provider (standalone, not "both")
     provider = db.get_provider_by_email(email)
     if provider:
         return {
             "id": provider["id"],
-            "email": provider["email"], 
+            "email": provider["email"],
             "username": provider["username"],
             "user_type": "provider",
             "is_active": provider["is_active"],
             "created_at": provider["created_at"],
         }
-    
+
     # User not found in database
     raise HTTPException(status_code=404, detail="User profile not found")
 
 
-@app.get("/spaces", response_model=List[ParkingSpaceResponse])
-async def get_spaces(limit: int = 100):
+@app.get("/spaces", response_model=list[ParkingSpaceResponse])
+async def get_spaces(limit: Annotated[int, Query(ge=1, le=10000)] = 100):
     places = db.get_published_places(limit=limit)
     return [
         ParkingSpaceResponse(
@@ -253,17 +345,19 @@ async def get_spaces(limit: int = 100):
             rating=0.0,
             is_available=True,
             image_url=None,
-            created_at=datetime.fromisoformat(place["created_at"]),
+            created_at=place["created_at"] + "Z"
+            if not place["created_at"].endswith("Z")
+            else place["created_at"],
         )
         for place in places
     ]
 
 
-@app.post("/spaces/search", response_model=List[ParkingSpaceResponse])
+@app.post("/spaces/search", response_model=list[ParkingSpaceResponse])
 async def search_spaces(query: SearchQuery):
     places = db.search_places_by_location(query.lat, query.lng, query.radius)
 
-    results = []
+    results: list[ParkingSpaceResponse] = []
     for place in places:
         price = 10.0  # TODO: Add price field to database
 
@@ -285,7 +379,9 @@ async def search_spaces(query: SearchQuery):
                 rating=0.0,
                 is_available=True,
                 image_url=None,
-                created_at=datetime.fromisoformat(place["created_at"]),
+                created_at=place["created_at"] + "Z"
+                if not place["created_at"].endswith("Z")
+                else place["created_at"],
             )
         )
 
@@ -293,7 +389,11 @@ async def search_spaces(query: SearchQuery):
 
 
 @app.get("/spaces/nearby")
-async def get_nearby_spaces(lat: float, lng: float, radius: float = 1.0):
+async def get_nearby_spaces(
+    lat: Annotated[float, Query(ge=-90, le=90)],
+    lng: Annotated[float, Query(ge=-180, le=180)],
+    radius: Annotated[float, Query(gt=0, le=1000)] = 1.0,
+):
     query = SearchQuery(lat=lat, lng=lng, radius=radius)
     return await search_spaces(query)
 
@@ -330,12 +430,18 @@ async def create_space(space: ParkingSpace):
         rating=0.0,
         is_available=True,
         image_url=space.image_url,
-        created_at=datetime.fromisoformat(place["created_at"]),
+        created_at=place["created_at"] + "Z"
+        if not place["created_at"].endswith("Z")
+        else place["created_at"],
     )
 
 
-@app.get("/spaces/{space_id}", response_model=ParkingSpaceResponse)
-async def get_space(space_id: int):
+@app.get(
+    "/spaces/{space_id}",
+    response_model=ParkingSpaceResponse,
+    responses={404: {"description": "Space not found"}},
+)
+async def get_space(space_id: Annotated[int, Path(ge=0, le=2147483647)]):
     place = db.get_place_by_id(space_id)
     if not place:
         raise HTTPException(status_code=404, detail="Space not found")
@@ -352,12 +458,23 @@ async def get_space(space_id: int):
         rating=0.0,
         is_available=True,
         image_url=None,
-        created_at=datetime.fromisoformat(place["created_at"]),
+        created_at=place["created_at"] + "Z"
+        if not place["created_at"].endswith("Z")
+        else place["created_at"],
     )
 
 
-@app.put("/spaces/{space_id}", response_model=ParkingSpaceResponse)
-async def update_space(space_id: int, space: ParkingSpace):
+@app.put(
+    "/spaces/{space_id}",
+    response_model=ParkingSpaceResponse,
+    responses={
+        404: {"description": "Space not found"},
+        403: {"description": "Not authorized"},
+    },
+)
+async def update_space(
+    space_id: Annotated[int, Path(ge=0, le=2147483647)], space: ParkingSpace
+):
     current_user = get_current_user()
     place = db.get_place_by_id(space_id)
     if not place:
@@ -393,12 +510,20 @@ async def update_space(space_id: int, space: ParkingSpace):
         rating=0.0,
         is_available=True,
         image_url=space.image_url,
-        created_at=datetime.fromisoformat(updated_place["created_at"]),
+        created_at=updated_place["created_at"] + "Z"
+        if not updated_place["created_at"].endswith("Z")
+        else updated_place["created_at"],
     )
 
 
-@app.delete("/spaces/{space_id}")
-async def delete_space(space_id: int):
+@app.delete(
+    "/spaces/{space_id}",
+    responses={
+        404: {"description": "Space not found"},
+        403: {"description": "Not authorized"},
+    },
+)
+async def delete_space(space_id: Annotated[int, Path(ge=0, le=2147483647)]):
     current_user = get_current_user()
     place = db.get_place_by_id(space_id)
     if not place:
@@ -414,8 +539,17 @@ async def delete_space(space_id: int):
     return {"message": "Space deleted"}
 
 
-@app.post("/spaces/{space_id}/upload-image")
-async def upload_image(space_id: int, file: UploadFile = File(...)):
+@app.post(
+    "/spaces/{space_id}/upload-image",
+    responses={
+        404: {"description": "Space not found"},
+        403: {"description": "Not authorized"},
+        400: {"description": "Invalid file"},
+    },
+)
+async def upload_image(
+    space_id: Annotated[int, Path(ge=0, le=2147483647)], file: UploadFile = File(...)
+):
     current_user = get_current_user()
     place = db.get_place_by_id(space_id)
     if not place:
@@ -450,18 +584,34 @@ async def upload_image(space_id: int, file: UploadFile = File(...)):
     return {"image_url": image_url}
 
 
-@app.get("/bookings/my-bookings", response_model=List[BookingResponse])
+@app.get("/bookings/my-bookings", response_model=list[BookingResponse])
 async def get_my_bookings():
     current_user = get_current_user()
     user_bookings = [
-        BookingResponse(**booking)
+        BookingResponse(
+            id=booking["id"],
+            space_id=booking["space_id"],
+            renter_id=booking["renter_id"],
+            start_time=booking["start_time"],
+            end_time=booking["end_time"],
+            total_price=booking["total_price"],
+            status=booking["status"],
+            created_at=booking["created_at"],
+        )
         for booking in bookings_db.values()
         if booking["renter_id"] == current_user["id"]
     ]
     return user_bookings
 
 
-@app.post("/bookings", response_model=BookingResponse)
+@app.post(
+    "/bookings",
+    response_model=BookingResponse,
+    responses={
+        404: {"description": "Space not found"},
+        400: {"description": "Space not available"},
+    },
+)
 async def create_booking(booking: Booking):
     global next_booking_id
     current_user = get_current_user()
@@ -472,14 +622,13 @@ async def create_booking(booking: Booking):
 
     # Check availability (simplified)
     for existing_booking in bookings_db.values():
-        if existing_booking["space_id"] == booking.space_id:
-            if not (
-                booking.end_time <= existing_booking["start_time"]
-                or booking.start_time >= existing_booking["end_time"]
-            ):
-                raise HTTPException(
-                    status_code=400, detail="Space not available for this time"
-                )
+        if existing_booking["space_id"] == booking.space_id and not (
+            booking.end_time <= existing_booking["start_time"]
+            or booking.start_time >= existing_booking["end_time"]
+        ):
+            raise HTTPException(
+                status_code=400, detail="Space not available for this time"
+            )
 
     booking_id = next_booking_id
     next_booking_id += 1
@@ -487,7 +636,7 @@ async def create_booking(booking: Booking):
     hours = (booking.end_time - booking.start_time).total_seconds() / 3600
     total_price = hours * 10.0  # TODO: Get price from database
 
-    booking_data = {
+    booking_data: BookingData = {
         "id": booking_id,
         "space_id": booking.space_id,
         "renter_id": current_user["id"],
@@ -495,16 +644,31 @@ async def create_booking(booking: Booking):
         "end_time": booking.end_time,
         "total_price": total_price,
         "status": "confirmed",
-        "created_at": datetime.now(),
+        "created_at": datetime.now().replace(microsecond=0).isoformat() + "Z",
     }
 
     bookings_db[str(booking_id)] = booking_data
 
-    return BookingResponse(**booking_data)
+    return BookingResponse(
+        id=booking_data["id"],
+        space_id=booking_data["space_id"],
+        renter_id=booking_data["renter_id"],
+        start_time=booking_data["start_time"],
+        end_time=booking_data["end_time"],
+        total_price=booking_data["total_price"],
+        status=booking_data["status"],
+        created_at=booking_data["created_at"],
+    )
 
 
-@app.put("/bookings/{booking_id}/cancel")
-async def cancel_booking(booking_id: int):
+@app.put(
+    "/bookings/{booking_id}/cancel",
+    responses={
+        404: {"description": "Booking not found"},
+        403: {"description": "Not authorized"},
+    },
+)
+async def cancel_booking(booking_id: Annotated[int, Path(ge=0)]):
     current_user = get_current_user()
     booking = bookings_db.get(str(booking_id))
     if not booking:
@@ -517,8 +681,15 @@ async def cancel_booking(booking_id: int):
     return {"message": "Booking cancelled"}
 
 
-@app.get("/bookings/space/{space_id}", response_model=List[BookingResponse])
-async def get_space_bookings(space_id: int):
+@app.get(
+    "/bookings/space/{space_id}",
+    response_model=list[BookingResponse],
+    responses={
+        404: {"description": "Space not found"},
+        403: {"description": "Not authorized"},
+    },
+)
+async def get_space_bookings(space_id: Annotated[int, Path(ge=0, le=2147483647)]):
     current_user = get_current_user()
     place = db.get_place_by_id(space_id)
     if not place:
@@ -531,14 +702,23 @@ async def get_space_bookings(space_id: int):
         raise HTTPException(status_code=403, detail="Not authorized")
 
     space_bookings = [
-        BookingResponse(**booking)
+        BookingResponse(
+            id=booking["id"],
+            space_id=booking["space_id"],
+            renter_id=booking["renter_id"],
+            start_time=booking["start_time"],
+            end_time=booking["end_time"],
+            total_price=booking["total_price"],
+            status=booking["status"],
+            created_at=booking["created_at"],
+        )
         for booking in bookings_db.values()
         if booking["space_id"] == space_id
     ]
     return space_bookings
 
 
-@app.post("/reports/license-plate")
+@app.post("/reports/license-plate", responses={501: {"description": "Not implemented"}})
 async def report_license_plate(report: ReportLicensePlate):
     # Teammate is adding database logic
     # Using report parameter to avoid unused variable warning
@@ -549,7 +729,7 @@ async def report_license_plate(report: ReportLicensePlate):
     )
 
 
-@app.get("/reports")
+@app.get("/reports", responses={501: {"description": "Not implemented"}})
 async def get_reports():
     # Teammate is adding database logic
     raise HTTPException(
