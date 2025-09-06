@@ -16,6 +16,7 @@ def init_database():
                 email TEXT UNIQUE NOT NULL,
                 username TEXT UNIQUE NOT NULL,
                 hashed_password TEXT NOT NULL,
+                user_type TEXT DEFAULT 'parker' CHECK(user_type IN ('parker', 'provider', 'both')),
                 license_plate_state TEXT CHECK(length(license_plate_state) = 2),
                 license_plate TEXT UNIQUE,
                 is_active BOOLEAN DEFAULT 1,
@@ -143,6 +144,14 @@ def init_database():
                 "ALTER TABLE places ADD COLUMN price_per_hour DECIMAL(10, 2) DEFAULT 0"
             )
 
+        # Add user_type column to users table if it doesn't exist
+        cursor.execute("PRAGMA table_info(users)")
+        users_columns = [column[1] for column in cursor.fetchall()]
+        if "user_type" not in users_columns:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN user_type TEXT DEFAULT 'parker' CHECK(user_type IN ('parker', 'provider', 'both'))"
+            )
+
         conn.commit()
 
 
@@ -166,6 +175,7 @@ def create_user(
     email: str,
     username: str,
     hashed_password: str,
+    user_type: str = "parker",
     license_plate_state: str | None = None,
     license_plate: str | None = None,
 ) -> int:
@@ -173,11 +183,11 @@ def create_user(
     with get_db() as conn:
         cursor = conn.execute(
             """
-            INSERT INTO users (email, username, hashed_password,
+            INSERT INTO users (email, username, hashed_password, user_type,
                 license_plate_state, license_plate)
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?)
         """,
-            (email, username, hashed_password, license_plate_state, license_plate),
+            (email, username, hashed_password, user_type, license_plate_state, license_plate),
         )
         return cursor.lastrowid or 0
 
@@ -227,6 +237,48 @@ def get_user_by_id(user_id: int) -> dict[str, Any] | None:
             result['average_rating'] = float(result['average_rating']) if result['rating_count'] > 0 else None
             return result
         return None
+
+
+def update_user(
+    email: str,
+    username: str | None = None,
+    license_plate: str | None = None,
+    license_plate_state: str | None = None,
+    user_type: str | None = None,
+    is_verified: bool | None = None,
+) -> bool:
+    """Update user profile by email"""
+    # Build the SET clause dynamically based on provided parameters
+    updates = []
+    params = []
+    
+    if username is not None:
+        updates.append("username = ?")
+        params.append(username)
+    if license_plate is not None:
+        updates.append("license_plate = ?")
+        params.append(license_plate)
+    if license_plate_state is not None:
+        updates.append("license_plate_state = ?")
+        params.append(license_plate_state)
+    if user_type is not None:
+        updates.append("user_type = ?")
+        params.append(user_type)
+    if is_verified is not None:
+        updates.append("is_verified = ?")
+        params.append(is_verified)
+    
+    if not updates:
+        return True  # No updates requested
+    
+    params.append(email)  # For the WHERE clause
+    
+    with get_db() as conn:
+        cursor = conn.execute(
+            f"UPDATE users SET {', '.join(updates)} WHERE email = ?",
+            params
+        )
+        return cursor.rowcount > 0
 
 
 # Place CRUD operations

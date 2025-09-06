@@ -122,15 +122,15 @@ class ApiService {
       description: apiSpace.description,
       price: apiSpace.price_per_hour,
       type: this.getPriceType(apiSpace.price_per_hour),
-      rating: apiSpace.rating || Math.random() * 2 + 3, // 3-5 rating
+      rating: apiSpace.average_rating || 0, // Use real rating from backend
       distance: distance,
       availability: apiSpace.is_available,
       requiresPayment: apiSpace.price_per_hour > 0,
-      requiresVerification: Math.random() > 0.9, // 10% require verification
+      requiresVerification: apiSpace.requires_verification || false, // Use backend data
       paymentType: 'hourly',
       features: apiSpace.tags || this.generateRandomFeatures(),
       imageUrl: apiSpace.image_url,
-      ownerId: apiSpace.owner_id,
+      ownerId: apiSpace.owner_id || apiSpace.added_by,
       createdAt: apiSpace.created_at,
     };
   }
@@ -370,6 +370,38 @@ class ApiService {
     }
   }
 
+  // Rating methods
+  async createPlaceRating(placeId, rating, description = null) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/ratings/places`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          place_id: placeId,
+          rating: rating,
+          description: description
+        }),
+      });
+      
+      if (!response.ok) {
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorMessage;
+        } catch (e) {
+          // If we can't parse the error response, use the generic message
+        }
+        throw new Error(errorMessage);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating place rating:', error);
+      throw error;
+    }
+  }
+
   async getMyBookings() {
     try {
       const response = await fetch(`${API_BASE_URL}/bookings/my-bookings`);
@@ -379,6 +411,19 @@ class ApiService {
       return await response.json();
     } catch (error) {
       console.error('Error getting my bookings:', error);
+      throw error;
+    }
+  }
+
+  async getPlaceRatings(placeId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/ratings/places/${placeId}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting place ratings:', error);
       throw error;
     }
   }
@@ -405,6 +450,37 @@ class ApiService {
     }
   }
 
+  async createUserRating(userId, rating, description = null) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/ratings/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ratee_id: userId,
+          rating: rating,
+          description: description
+        }),
+      });
+      
+      if (!response.ok) {
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorMessage;
+        } catch (e) {
+          // If we can't parse the error response, use the generic message
+        }
+        throw new Error(errorMessage);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating user rating:', error);
+      throw error;
+    }
+  }
+
   async getSpaceBookings(spaceId) {
     try {
       const response = await fetch(`${API_BASE_URL}/bookings/space/${spaceId}`);
@@ -417,6 +493,20 @@ class ApiService {
       throw error;
     }
   }
+
+  async getUserRatings(userId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/ratings/users/${userId}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting user ratings:', error);
+      throw error;
+    }
+  }
 }
 
-export default new ApiService();
+const apiService = new ApiService();
+export default apiService;

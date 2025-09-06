@@ -7,7 +7,6 @@ import './CompleteRegistration.css';
 const CompleteRegistration = ({ onComplete }) => {
   const [formData, setFormData] = useState({
     username: '',
-    userType: 'parker', // Default to parker
     licensePlate: '',
   });
   const [submitting, setSubmitting] = useState(false);
@@ -34,8 +33,8 @@ const CompleteRegistration = ({ onComplete }) => {
       return;
     }
 
-    if (formData.userType === 'parker' && !formData.licensePlate.trim()) {
-      setError('License plate is required for parkers');
+    if (!formData.licensePlate.trim()) {
+      setError('License plate is required');
       setSubmitting(false);
       return;
     }
@@ -44,9 +43,8 @@ const CompleteRegistration = ({ onComplete }) => {
       const registrationData = {
         email: user.primaryEmailAddress.emailAddress,
         name: formData.username.trim(),
-        user_type: formData.userType,
-        car_license_plate: formData.userType === 'parker' ? 
-          formData.licensePlate.trim() : null,
+        user_type: 'parker',
+        car_license_plate: formData.licensePlate.trim(),
       };
 
       await apiService.register(registrationData);
@@ -106,23 +104,7 @@ const CompleteRegistration = ({ onComplete }) => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="userType">I want to *</label>
-            <select
-              id="userType"
-              name="userType"
-              value={formData.userType}
-              onChange={handleInputChange}
-              required
-            >
-              <option value="parker">Find parking spaces (Parker)</option>
-              <option value="provider">List my parking spaces (Provider)</option>
-              <option value="both">Both find and list parking</option>
-            </select>
-          </div>
-
-          {(formData.userType === 'parker' || formData.userType === 'both') && (
-            <div className="form-group">
-              <label htmlFor="licensePlate">License Plate *</label>
+            <label htmlFor="licensePlate">License Plate *</label>
               <input
                 type="text"
                 id="licensePlate"
@@ -138,7 +120,6 @@ const CompleteRegistration = ({ onComplete }) => {
                 Required for parking and reporting violations
               </small>
             </div>
-          )}
 
           {error && <div className="error-message">{error}</div>}
 

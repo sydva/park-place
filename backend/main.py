@@ -250,66 +250,46 @@ async def register(user: UserRegister):
 
     # Check if user already exists and make unique if needed for testing
 
-    existing_parker = db.get_parker_by_email(user.email)
-    existing_provider = db.get_provider_by_email(user.email)
-    if existing_parker or existing_provider:
+    existing_user = db.get_user_by_email(user.email)
+    if existing_user:
         # For testing, make it unique
         unique_suffix = str(int(time.time() * 1000000))[-8:]
         user.email = f"{user.email}_{unique_suffix}"
         user.name = f"{user.name}_{unique_suffix}"
 
-    # Create user based on type
+    # Create user
     try:
-        if user.user_type in ["parker", "renter", "both"]:
-            user_id = db.create_parker(
-                email=user.email,
-                username=user.name,
-                hashed_password="temp_hash",
-                license_plate_state=license_plate_state,
-                license_plate=license_plate_number,
-            )
-        else:  # provider
-            user_id = db.create_provider(
-                email=user.email, username=user.name, hashed_password="temp_hash"
-            )
+        user_id = db.create_user(
+            email=user.email,
+            username=user.name,
+            hashed_password="temp_hash",
+            license_plate_state=license_plate_state,
+            license_plate=license_plate_number,
+        )
     except Exception as e:
         if "UNIQUE constraint failed" in str(e):
             # Try again with unique username
             unique_suffix = str(int(time.time() * 1000000))[-8:]
             user.name = f"{user.name}_{unique_suffix}"
             user.email = f"{user.email}_{unique_suffix}"
-            if user.user_type in ["parker", "renter", "both"]:
-                user_id = db.create_parker(
-                    email=user.email,
-                    username=user.name,
-                    hashed_password="temp_hash",
-                    license_plate_state=license_plate_state,
-                    license_plate=license_plate_number,
-                )
-            else:
-                user_id = db.create_provider(
-                    email=user.email, username=user.name, hashed_password="temp_hash"
-                )
+            user_id = db.create_user(
+                email=user.email,
+                username=user.name,
+                hashed_password="temp_hash",
+                license_plate_state=license_plate_state,
+                license_plate=license_plate_number,
+            )
         else:
             raise HTTPException(status_code=500, detail="Registration failed") from None
 
-    # If user type is "both", also create provider record
-    if user.user_type == "both":
-        try:
-            db.create_provider(
-                email=f"provider_{user.email}",  # Use different email to avoid conflict
-                username=f"{user.name}_provider",
-                hashed_password="temp_hash",
-            )
-        except Exception as e:
-            # If provider creation fails, it's not critical for MVP
-            print(f"Warning: Failed to create provider record for 'both' user: {e}")
+    # User type "both" is now handled in the single unified users table
+    # No need for separate provider record creation
 
     return UserResponse(
         id=user_id,
         email=user.email,
         name=user.name,
-        user_type=user.user_type,
+        user_type="parker",  # Default for all users now
         rating=0.0,
     )
 
@@ -335,71 +315,61 @@ async def get_me():
 @app.get("/users/profile")
 async def get_user_profile(email: str):
     """Get user profile by email from database"""
-    # First check if user is a parker
-    parker = db.get_parker_by_email(email)
-    if parker:
-        # Check if there's also a provider record (for "both" users)
-        provider = db.get_provider_by_email(f"provider_{email}")
-        user_type = "both" if provider else "parker"
+    user = db.get_user_by_email(email)
+    if not user:
+        raise HTTPException(status_code=404, detail="User profile not found")
 
-        return {
-            "id": parker["id"],
-            "email": parker["email"],
-            "username": parker["username"],
-            "user_type": user_type,
-            "license_plate": parker["license_plate"],
-            "license_plate_state": parker["license_plate_state"],
-            "is_active": parker["is_active"],
-            "is_verified": parker.get("is_verified", False),
-            "created_at": parker["created_at"],
-        }
-
-    # Check if user is a provider (standalone, not "both")
-    provider = db.get_provider_by_email(email)
-    if provider:
-        return {
-            "id": provider["id"],
-            "email": provider["email"],
-            "username": provider["username"],
-            "user_type": "provider",
-            "is_active": provider["is_active"],
-            "created_at": provider["created_at"],
-        }
-
-    # User not found in database
-    raise HTTPException(status_code=404, detail="User profile not found")
+    return {
+        "id": user["id"],
+        "email": user["email"],
+        "username": user["username"],
+        "user_type": user["user_type"],
+        "license_plate": user.get("license_plate"),
+        "license_plate_state": user.get("license_plate_state"),
+        "is_active": user["is_active"],
+        "is_verified": user.get("is_verified", False),
+        "created_at": user["created_at"],
+    }
 
 
 @app.put("/users/update-profile")
 async def update_user_profile(user_data: UserRegister):
     """Update user profile by email"""
     try:
-        # Get current user profile
-        parker = db.get_parker_by_email(user_data.email)
-        if not parker:
+        # Check if user exists
+        user = db.get_user_by_email(user_data.email)
+        if not user:
             raise HTTPException(status_code=404, detail="User profile not found")
         
-        # Update the parker record
-        success = db.update_parker_profile(
+        # Parse license plate if provided
+        license_plate_state = None
+        license_plate_number = None
+        if user_data.car_license_plate and len(user_data.car_license_plate) >= 2:
+            license_plate_state = user_data.car_license_plate[:2].upper()
+            license_plate_number = user_data.car_license_plate[2:].upper()
+        
+        # Update the user record
+        success = db.update_user(
             email=user_data.email,
             username=user_data.name,
-            license_plate=user_data.car_license_plate
+            license_plate=license_plate_number,
+            license_plate_state=license_plate_state,
         )
         
         if not success:
             raise HTTPException(status_code=500, detail="Failed to update profile")
             
         # Return updated profile
-        updated_parker = db.get_parker_by_email(user_data.email)
+        updated_user = db.get_user_by_email(user_data.email)
         return {
-            "id": updated_parker["id"],
-            "email": updated_parker["email"],
-            "username": updated_parker["username"],
-            "user_type": user_data.user_type,
-            "license_plate": updated_parker["license_plate"],
-            "license_plate_state": updated_parker["license_plate_state"],
-            "is_active": updated_parker["is_active"],
-            "created_at": updated_parker["created_at"],
+            "id": updated_user["id"],
+            "email": updated_user["email"],
+            "username": updated_user["username"],
+            "user_type": updated_user["user_type"],
+            "license_plate": updated_user.get("license_plate"),
+            "license_plate_state": updated_user.get("license_plate_state"),
+            "is_active": updated_user["is_active"],
+            "created_at": updated_user["created_at"],
         }
     except HTTPException:
         raise
