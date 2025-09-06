@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import { useNavigate } from 'react-router-dom';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import TagInput from './TagInput';
+import SimpleTagInput from './SimpleTagInput';
 import './AddParkingSpace.css';
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -185,7 +185,8 @@ const AddParkingSpace = () => {
             
             <div className="tags-section">
               <h3>Features & Amenities</h3>
-              <TagInput
+              <p className="tags-description">Select features that describe this parking space</p>
+              <SimpleTagInput
                 selectedTags={tags}
                 onTagsChange={setTags}
                 maxTags={8}

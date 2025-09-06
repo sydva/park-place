@@ -1,0 +1,20 @@
+.parking-space-marker {
+  transition: transform 0.2s ease;
+  cursor: pointer;
+}
+
+.parking-space-marker:hover {
+  transform: scale(1.1);
+  z-index: 1000 !important;
+}
+
+.parking-price-marker {
+  transition: all 0.2s ease;
+  cursor: pointer;
+  z-index: 500;
+}
+
+.parking-price-marker:hover {
+  transform: scale(1.05);
+  z-index: 1000 !important;
+}

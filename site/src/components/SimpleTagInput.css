@@ -1,0 +1,109 @@
+.simple-tag-input {
+  width: 100%;
+}
+
+.tag-counter {
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: #666;
+  text-align: right;
+  font-weight: 500;
+}
+
+.tag-category {
+  margin-bottom: 24px;
+}
+
+.category-title {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #282c34;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 4px;
+}
+
+.tag-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.tag-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  background: white;
+  color: #666;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.tag-chip:hover:not(:disabled) {
+  border-color: #61dafb;
+  background: #f8fdff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(97, 218, 251, 0.2);
+}
+
+.tag-chip.selected {
+  border-color: #2196F3;
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.tag-chip.selected .tag-icon {
+  filter: brightness(0.8);
+}
+
+.tag-chip.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tag-chip.disabled:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: #e0e0e0;
+  background: white;
+}
+
+.tag-icon {
+  font-size: 16px;
+  min-width: 16px;
+}
+
+.tag-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .tag-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 6px;
+  }
+  
+  .tag-chip {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  
+  .tag-icon {
+    font-size: 14px;
+  }
+  
+  .category-title {
+    font-size: 13px;
+  }
+}
