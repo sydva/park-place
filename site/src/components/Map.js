@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import { useUser } from '@clerk/clerk-react';
 import UserMenu from './UserMenu';
 import ParkingSpaceMarker from './ParkingSpaceMarker';
 import ParkingSpaceModal from './ParkingSpaceModal';
@@ -72,8 +73,9 @@ const Map = () => {
   const [mapCenter, setMapCenter] = useState(null);
   const [searchLocation, setSearchLocation] = useState(null);
   
-  // Mock user verification status - in real app, get from auth context
-  const [isUserVerified] = useState(Math.random() > 0.5);
+  // User verification status from Clerk
+  const { user: clerkUser, isLoaded: isUserLoaded } = useUser();
+  const [isUserVerified, setIsUserVerified] = useState(false);
   const [filters, setFilters] = useState({
     tags: [],
     priceRange: [0, 20],
@@ -100,6 +102,10 @@ const Map = () => {
             
             // Load parking spaces from backend
             try {
+              // Set user verification status (for now, all Clerk users are verified)
+              setIsUserVerified(true);
+              
+              // Load parking spaces 
               const spaces = await apiService.getNearbySpaces(userPos[0], userPos[1], 5.0);
               setParkingSpaces(spaces);
               setFilteredSpaces(spaces);
@@ -176,6 +182,7 @@ const Map = () => {
 
   const handleParkingSpaceClick = (space) => {
     setSelectedSpace(space);
+    setMapCenter([space.lat, space.lng]);
   };
 
   const handleLocationSearch = async (location) => {

@@ -7,6 +7,7 @@ import Map from './components/Map';
 import ReportLicensePlate from './components/ReportLicensePlate';
 import AddParkingSpace from './components/AddParkingSpace';
 import ProtectedRoute from './components/ProtectedRoute';
+import CompleteRegistration from './components/CompleteRegistration';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
           path="/sign-up/*" 
           element={<SignUp routing="path" path="/sign-up" />} 
         />
+        <Route path="/complete-registration" element={<CompleteRegistration />} />
         <Route path="/map" element={<ProtectedRoute><Map /></ProtectedRoute>} />
         <Route 
           path="/report-license-plate" 

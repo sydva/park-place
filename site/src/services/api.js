@@ -150,6 +150,62 @@ class ApiService {
     const shuffled = allFeatures.sort(() => 0.5 - Math.random());
     return shuffled.slice(0, numFeatures);
   }
+
+  // Auth methods
+  async getCurrentUser() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/me`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting current user:', error);
+      throw error;
+    }
+  }
+
+  async getUserProfileByEmail(email) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/profile?email=${encodeURIComponent(email)}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null; // User not found in database
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting user profile:', error);
+      throw error;
+    }
+  }
+
+  async register(userData) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
+      if (!response.ok) {
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorMessage;
+        } catch (e) {
+          // If we can't parse the error response, use the generic message
+        }
+        throw new Error(errorMessage);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error registering user:', error);
+      throw error;
+    }
+  }
 }
 
 export default new ApiService();

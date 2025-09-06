@@ -31,7 +31,7 @@ DEV_USER = {
 
 class UserRegister(BaseModel):
     email: str
-    password: str
+    password: Optional[str] = None  # Optional since we use Clerk for auth
     name: str
     user_type: str = "renter"  # renter, lister, both
     car_license_plate: Optional[str] = None
@@ -137,18 +137,41 @@ async def root():
 
 @app.post("/auth/register", response_model=UserResponse)
 async def register(user: UserRegister):
-    # Simplified registration for now
-    if user.user_type in ["renter", "both"]:
+    # Parse license plate data
+    license_plate_state = None
+    license_plate_number = None
+    
+    if user.car_license_plate and len(user.car_license_plate) >= 2:
+        # License plate format is expected to be like "CAABCD123" (state code + plate)
+        # First 2 characters are state, rest is plate number
+        license_plate_state = user.car_license_plate[:2].upper()
+        license_plate_number = user.car_license_plate[2:].upper()
+    
+    # Create user based on type
+    if user.user_type in ["parker", "renter", "both"]:
         user_id = db.create_parker(
             email=user.email,
             username=user.name,
             hashed_password="temp_hash",
-            license_plate=user.car_license_plate if user.car_license_plate else None,
+            license_plate_state=license_plate_state,
+            license_plate=license_plate_number,
         )
-    else:
+    else:  # provider
         user_id = db.create_provider(
             email=user.email, username=user.name, hashed_password="temp_hash"
         )
+
+    # If user type is "both", also create provider record
+    if user.user_type == "both":
+        try:
+            db.create_provider(
+                email=f"provider_{user.email}",  # Use different email to avoid conflict
+                username=f"{user.name}_provider",
+                hashed_password="temp_hash"
+            )
+        except Exception as e:
+            # If provider creation fails, it's not critical for MVP
+            print(f"Warning: Failed to create provider record for 'both' user: {e}")
 
     return UserResponse(
         id=user_id,
@@ -175,6 +198,43 @@ async def get_me():
         user_type=current_user["user_type"],
         rating=0.0,
     )
+
+
+@app.get("/users/profile")
+async def get_user_profile(email: str):
+    """Get user profile by email from database"""
+    # First check if user is a parker
+    parker = db.get_parker_by_email(email)
+    if parker:
+        # Check if there's also a provider record (for "both" users)
+        provider = db.get_provider_by_email(f"provider_{email}")
+        user_type = "both" if provider else "parker"
+        
+        return {
+            "id": parker["id"],
+            "email": parker["email"],
+            "username": parker["username"],
+            "user_type": user_type,
+            "license_plate": parker["license_plate"],
+            "license_plate_state": parker["license_plate_state"],
+            "is_active": parker["is_active"],
+            "created_at": parker["created_at"],
+        }
+    
+    # Check if user is a provider (standalone, not "both")
+    provider = db.get_provider_by_email(email)
+    if provider:
+        return {
+            "id": provider["id"],
+            "email": provider["email"], 
+            "username": provider["username"],
+            "user_type": "provider",
+            "is_active": provider["is_active"],
+            "created_at": provider["created_at"],
+        }
+    
+    # User not found in database
+    raise HTTPException(status_code=404, detail="User profile not found")
 
 
 @app.get("/spaces", response_model=List[ParkingSpaceResponse])
