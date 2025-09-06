@@ -206,6 +206,85 @@
   transform: none;
 }
 
+/* Payment Section Styles */
+.payment-section {
+  border-top: 1px solid #f0f0f0;
+  padding-top: 20px;
+}
+
+.payment-section h3 {
+  margin: 0 0 16px 0;
+  color: #282c34;
+  font-size: 16px;
+}
+
+.hours-selector {
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hours-selector label {
+  color: #282c34;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.hours-input {
+  padding: 8px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.hours-input:focus {
+  outline: none;
+  border-color: #61dafb;
+}
+
+/* Success Section Styles */
+.success-section {
+  border-top: 1px solid #f0f0f0;
+  padding-top: 20px;
+  text-align: center;
+}
+
+.success-message {
+  background: #f8f9fa;
+  border: 2px solid #28a745;
+  border-radius: 12px;
+  padding: 24px;
+  color: #155724;
+}
+
+.success-message svg {
+  color: #28a745;
+  margin-bottom: 12px;
+}
+
+.success-message h3 {
+  margin: 0 0 8px 0;
+  color: #155724;
+  font-size: 18px;
+}
+
+.success-message p {
+  margin: 4px 0 0 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* Price display improvements */
+.price .max-hours {
+  color: #666;
+  font-size: 12px;
+  font-weight: normal;
+}
+
 .modal-footer {
   padding: 16px 24px 24px;
   border-top: 1px solid #f0f0f0;

@@ -24,17 +24,23 @@ export const generateParkingSpaces = (centerLat, centerLng) => {
     const spaceLat = centerLat + latOffset;
     const spaceLng = centerLng + lngOffset;
     
+    const hasPrice = Math.random() > 0.3; // 70% of spaces have pricing
     const space = {
       id: `space-${i}`,
       lat: spaceLat,
       lng: spaceLng,
       type: Math.random() > 0.7 ? 'premium' : Math.random() > 0.4 ? 'standard' : 'basic',
-      price: Math.random() > 0.5 ? Math.floor(Math.random() * 8) + 2 : 0, // 0 for free, 2-10 for paid
+      price: hasPrice ? Math.floor(Math.random() * 8) + 2 : 0, // 0 for free, 2-10 for paid
       rating: Math.random() * 2 + 3, // 3-5 star rating
       availability: Math.random() > 0.3, // 70% available
       distance: calculateDistance(centerLat, centerLng, spaceLat, spaceLng), // actual calculated distance
       timeLimit: Math.random() > 0.5 ? null : [30, 60, 120, 180][Math.floor(Math.random() * 4)], // minutes
       features: getRandomFeatures(),
+      // Payment-related fields
+      requiresPayment: hasPrice,
+      paymentType: hasPrice ? (Math.random() > 0.5 ? 'hourly' : 'flat') : null,
+      maxHours: hasPrice ? Math.floor(Math.random() * 8) + 1 : null, // 1-8 hours max
+      ownerId: hasPrice ? `owner-${Math.floor(Math.random() * 20)}` : null, // Some spaces are owned privately
     };
     
     spaces.push(space);

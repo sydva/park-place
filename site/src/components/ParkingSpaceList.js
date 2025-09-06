@@ -31,9 +31,10 @@ const ParkingSpaceListItem = ({ space, userLocation, onSpaceClick, onSpaceSelect
     }
   };
 
-  const formatPrice = (price) => {
-    if (price === 0) return 'Free';
-    return `$${price}/hr`;
+  const formatPrice = (space) => {
+    if (space.price === 0) return 'Free';
+    if (space.paymentType === 'flat') return `$${space.price}`;
+    return `$${space.price}/hr`;
   };
 
   const getTypeColor = (type) => {
@@ -53,7 +54,10 @@ const ParkingSpaceListItem = ({ space, userLocation, onSpaceClick, onSpaceSelect
             className="space-type-dot" 
             style={{ backgroundColor: getTypeColor(space.type) }}
           ></span>
-          <span className="space-price">{formatPrice(space.price)}</span>
+          <span className="space-price">
+            {formatPrice(space)}
+            {space.requiresPayment && <Icon name="dollar" size={12} className="payment-indicator" />}
+          </span>
         </div>
         <div className="space-distance">{formatDistance(distance)}</div>
       </div>

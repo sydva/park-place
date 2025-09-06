@@ -2,12 +2,16 @@ import React, { useState } from 'react';
 import StarRating from './StarRating';
 import { getTagDisplay } from '../data/parkingTags';
 import Icon from './Icon';
+import StripePayment from './StripePayment';
 import './ParkingSpaceModal.css';
 
 const ParkingSpaceModal = ({ space, onClose, userLocation }) => {
   const [userRating, setUserRating] = useState(0);
   const [userComment, setUserComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [selectedHours, setSelectedHours] = useState(1);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   if (!space) return null;
 
@@ -37,9 +41,16 @@ const ParkingSpaceModal = ({ space, onClose, userLocation }) => {
     }
   };
 
-  const formatPrice = (price) => {
+  const formatPrice = (price, paymentType) => {
     if (price === 0) return 'Free';
+    if (paymentType === 'flat') return `$${price}`;
     return `$${price}/hour`;
+  };
+
+  const calculateTotalPrice = () => {
+    if (!space.requiresPayment) return 0;
+    if (space.paymentType === 'flat') return space.price;
+    return space.price * selectedHours;
   };
 
   const getTypeDisplay = (type) => {
@@ -74,6 +85,26 @@ const ParkingSpaceModal = ({ space, onClose, userLocation }) => {
     window.open(googleMapsUrl, '_blank');
   };
 
+  const handleReserveClick = () => {
+    if (!space.requiresPayment) {
+      // Handle free reservation
+      console.log('Reserving free parking space:', space.id);
+      setPaymentSuccess(true);
+    } else {
+      setShowPayment(true);
+    }
+  };
+
+  const handlePaymentSuccess = (paymentResult) => {
+    console.log('Payment successful:', paymentResult);
+    setPaymentSuccess(true);
+    setShowPayment(false);
+  };
+
+  const handlePaymentCancel = () => {
+    setShowPayment(false);
+  };
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -93,7 +124,12 @@ const ParkingSpaceModal = ({ space, onClose, userLocation }) => {
 
             <div className="info-row">
               <span className="label">Price:</span>
-              <span className="price">{formatPrice(space.price)}</span>
+              <span className="price">
+                {formatPrice(space.price, space.paymentType)}
+                {space.requiresPayment && space.paymentType === 'hourly' && space.maxHours && (
+                  <span className="max-hours"> (max {space.maxHours}h)</span>
+                )}
+              </span>
             </div>
 
             <div className="info-row">
@@ -131,46 +167,92 @@ const ParkingSpaceModal = ({ space, onClose, userLocation }) => {
             )}
           </div>
 
-          <div className="rating-section">
-            <h3>Rate this parking space</h3>
-            <div className="user-rating">
-              <StarRating 
-                rating={userRating} 
-                onRatingChange={setUserRating}
-                size="large"
+          {showPayment ? (
+            <div className="payment-section">
+              <h3>Reserve Parking Space</h3>
+              {space.paymentType === 'hourly' && (
+                <div className="hours-selector">
+                  <label htmlFor="hours">Duration:</label>
+                  <select 
+                    id="hours" 
+                    value={selectedHours} 
+                    onChange={(e) => setSelectedHours(parseInt(e.target.value))}
+                    className="hours-input"
+                  >
+                    {Array.from({length: space.maxHours || 8}, (_, i) => i + 1).map(hour => (
+                      <option key={hour} value={hour}>{hour} hour{hour > 1 ? 's' : ''}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <StripePayment
+                amount={calculateTotalPrice()}
+                onSuccess={handlePaymentSuccess}
+                onCancel={handlePaymentCancel}
+                parkingSpace={space}
+                selectedHours={selectedHours}
               />
             </div>
-            
-            <textarea
-              className="comment-input"
-              placeholder="Add a comment (optional)..."
-              value={userComment}
-              onChange={(e) => setUserComment(e.target.value)}
-              maxLength={200}
-              rows={3}
-            />
-            
-            <button 
-              className="submit-rating-button"
-              onClick={handleSubmitRating}
-              disabled={userRating === 0 || isSubmitting}
-            >
-              {isSubmitting ? 'Submitting...' : 'Submit Rating'}
-            </button>
-          </div>
+          ) : paymentSuccess ? (
+            <div className="success-section">
+              <div className="success-message">
+                <Icon name="check" size={24} />
+                <h3>Reservation Confirmed!</h3>
+                <p>Your parking space has been reserved successfully.</p>
+                {space.requiresPayment && (
+                  <p>You have reserved this space for {space.paymentType === 'hourly' ? `${selectedHours} hour${selectedHours > 1 ? 's' : ''}` : 'unlimited time'}.</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="rating-section">
+              <h3>Rate this parking space</h3>
+              <div className="user-rating">
+                <StarRating 
+                  rating={userRating} 
+                  onRatingChange={setUserRating}
+                  size="large"
+                />
+              </div>
+              
+              <textarea
+                className="comment-input"
+                placeholder="Add a comment (optional)..."
+                value={userComment}
+                onChange={(e) => setUserComment(e.target.value)}
+                maxLength={200}
+                rows={3}
+              />
+              
+              <button 
+                className="submit-rating-button"
+                onClick={handleSubmitRating}
+                disabled={userRating === 0 || isSubmitting}
+              >
+                {isSubmitting ? 'Submitting...' : 'Submit Rating'}
+              </button>
+            </div>
+          )}
         </div>
 
-        <div className="modal-footer">
-          <div className="footer-buttons">
-            <button className="navigate-button" onClick={handleNavigate}>
-              <Icon name="navigation" size={16} />
-              Navigate Here
-            </button>
-            <button className="reserve-button">
-              Reserve This Spot
-            </button>
+        {!showPayment && (
+          <div className="modal-footer">
+            <div className="footer-buttons">
+              <button className="navigate-button" onClick={handleNavigate}>
+                <Icon name="navigation" size={16} />
+                Navigate Here
+              </button>
+              {!paymentSuccess && (
+                <button className="reserve-button" onClick={handleReserveClick}>
+                  <Icon name={space.requiresPayment ? "dollar" : "check"} size={16} />
+                  {space.requiresPayment ? 
+                    `Reserve - $${calculateTotalPrice().toFixed(2)}` : 
+                    'Reserve (Free)'}
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
