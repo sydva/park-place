@@ -1,0 +1,208 @@
+.booking-modal-content {
+  background: white;
+  border: 4px solid #000;
+  border-radius: 8px;
+  box-shadow: 8px 8px 0px #000;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  animation: modalSlideIn 0.2s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -60%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.booking-space-info {
+  padding: 0 24px;
+  border-bottom: 2px solid #000;
+  background: #f0f8ff;
+}
+
+.space-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+}
+
+.space-summary h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: bold;
+  color: #000;
+}
+
+.space-price {
+  font-size: 20px;
+  font-weight: bold;
+  color: #2196F3;
+  margin: 0;
+}
+
+.booking-form {
+  padding: 24px;
+}
+
+.datetime-section h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: bold;
+  color: #000;
+}
+
+.datetime-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.datetime-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.datetime-group label {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #333;
+  font-size: 14px;
+}
+
+.date-input,
+.time-input {
+  padding: 12px;
+  border: 3px solid #000;
+  border-radius: 4px;
+  font-size: 16px;
+  font-family: inherit;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.date-input:focus,
+.time-input:focus {
+  outline: none;
+  background: #f0f8ff;
+  box-shadow: 0 0 0 2px #2196F3;
+}
+
+.booking-summary {
+  background: #f8f9fa;
+  border: 3px solid #000;
+  border-radius: 4px;
+  padding: 16px;
+  margin: 24px 0;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 16px;
+}
+
+.summary-row.total {
+  border-top: 2px solid #000;
+  padding-top: 12px;
+  margin-top: 8px;
+  font-weight: bold;
+  font-size: 18px;
+  color: #2196F3;
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffebee;
+  border: 2px solid #f44336;
+  border-radius: 4px;
+  padding: 12px;
+  margin: 16px 0;
+  color: #d32f2f;
+  font-weight: 500;
+}
+
+.booking-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.cancel-button,
+.book-button {
+  flex: 1;
+  padding: 14px 16px;
+  border: 3px solid #000;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.cancel-button {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.cancel-button:hover {
+  background: #e0e0e0;
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0px #000;
+}
+
+.book-button {
+  background: #4CAF50;
+  color: white;
+}
+
+.book-button:hover:not(:disabled) {
+  background: #45a049;
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0px #000;
+}
+
+.book-button:disabled {
+  background: #ccc;
+  color: #666;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+@media (max-width: 768px) {
+  .booking-modal-content {
+    width: 95%;
+    max-width: none;
+  }
+  
+  .datetime-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .booking-actions {
+    flex-direction: column;
+  }
+  
+  .booking-form {
+    padding: 16px;
+  }
+}

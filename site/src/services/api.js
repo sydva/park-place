@@ -313,7 +313,6 @@ class ApiService {
         method: 'POST',
         body: formData, // Don't set Content-Type header - let browser set it with boundary
       });
-      
       if (!response.ok) {
         let errorMessage = `HTTP error! status: ${response.status}`;
         try {
@@ -340,6 +339,81 @@ class ApiService {
       return await response.json();
     } catch (error) {
       console.error('Error getting verification status:', error);
+      throw error;
+    }
+  }
+
+  // Booking methods
+  async createBooking(bookingData) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(bookingData),
+      });
+      if (!response.ok) {
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorMessage;
+        } catch (e) {
+          // If we can't parse the error response, use the generic message
+        }
+        throw new Error(errorMessage);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      throw error;
+    }
+  }
+
+  async getMyBookings() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookings/my-bookings`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting my bookings:', error);
+      throw error;
+    }
+  }
+
+  async cancelBooking(bookingId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/cancel`, {
+        method: 'PUT',
+      });
+      if (!response.ok) {
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorMessage;
+        } catch (e) {
+          // If we can't parse the error response, use the generic message
+        }
+        throw new Error(errorMessage);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      throw error;
+    }
+  }
+
+  async getSpaceBookings(spaceId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookings/space/${spaceId}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting space bookings:', error);
       throw error;
     }
   }

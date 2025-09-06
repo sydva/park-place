@@ -9,6 +9,7 @@ import AddParkingSpace from './components/AddParkingSpace';
 import ProtectedRoute from './components/ProtectedRoute';
 import CompleteRegistration from './components/CompleteRegistration';
 import EditProfile from './components/EditProfile';
+import MyBookings from './components/MyBookings';
 import AuthLayout from './components/AuthLayout';
 import Terms from './components/Terms';
 import Privacy from './components/Privacy';
@@ -63,6 +64,10 @@ function AppRoutes() {
       <Route 
         path="/add-parking-space" 
         element={<ProtectedRoute><AddParkingSpace /></ProtectedRoute>} 
+      />
+      <Route 
+        path="/my-bookings" 
+        element={<ProtectedRoute><MyBookings /></ProtectedRoute>} 
       />
     </Routes>
   );

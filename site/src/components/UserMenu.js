@@ -255,6 +255,9 @@ const UserMenu = () => {
             <button className="menu-action-button" onClick={handleAddParkingSpace}>
               Add New Parking Space
             </button>
+            <button className="menu-action-button" onClick={() => { setIsOpen(false); navigate('/my-bookings'); }}>
+              My Bookings
+            </button>
             <button className="logout-button" onClick={handleLogout}>
               Logout
             </button>

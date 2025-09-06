@@ -3,6 +3,7 @@ import StarRating from './StarRating';
 import { getTagDisplay } from '../data/parkingTags';
 import Icon from './Icon';
 import StripePayment from './StripePayment';
+import BookingModal from './BookingModal';
 import './ParkingSpaceModal.css';
 
 const ParkingSpaceModal = ({ space, onClose, userLocation }) => {
@@ -12,6 +13,8 @@ const ParkingSpaceModal = ({ space, onClose, userLocation }) => {
   const [showPayment, setShowPayment] = useState(false);
   const [selectedHours, setSelectedHours] = useState(1);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [bookingSuccess, setBookingSuccess] = useState(false);
 
   if (!space) return null;
 
@@ -86,13 +89,13 @@ const ParkingSpaceModal = ({ space, onClose, userLocation }) => {
   };
 
   const handleReserveClick = () => {
-    if (!space.requiresPayment) {
-      // Handle free reservation
-      console.log('Reserving free parking space:', space.id);
-      setPaymentSuccess(true);
-    } else {
-      setShowPayment(true);
-    }
+    setShowBookingModal(true);
+  };
+
+  const handleBookingSuccess = (booking) => {
+    console.log('Booking created successfully:', booking);
+    setBookingSuccess(true);
+    setShowBookingModal(false);
   };
 
   const handlePaymentSuccess = (paymentResult) => {
@@ -193,15 +196,13 @@ const ParkingSpaceModal = ({ space, onClose, userLocation }) => {
                 selectedHours={selectedHours}
               />
             </div>
-          ) : paymentSuccess ? (
+          ) : paymentSuccess || bookingSuccess ? (
             <div className="success-section">
               <div className="success-message">
                 <Icon name="check" size={24} />
-                <h3>Reservation Confirmed!</h3>
-                <p>Your parking space has been reserved successfully.</p>
-                {space.requiresPayment && (
-                  <p>You have reserved this space for {space.paymentType === 'hourly' ? `${selectedHours} hour${selectedHours > 1 ? 's' : ''}` : 'unlimited time'}.</p>
-                )}
+                <h3>Booking Confirmed!</h3>
+                <p>Your parking space has been booked successfully.</p>
+                <p>Check "My Bookings" to view and manage your reservations.</p>
               </div>
             </div>
           ) : (
@@ -242,16 +243,23 @@ const ParkingSpaceModal = ({ space, onClose, userLocation }) => {
                 <Icon name="navigation" size={16} />
                 Navigate Here
               </button>
-              {!paymentSuccess && (
+              {!paymentSuccess && !bookingSuccess && (
                 <button className="reserve-button" onClick={handleReserveClick}>
-                  <Icon name={space.requiresPayment ? "dollar" : "check"} size={16} />
-                  {space.requiresPayment ? 
-                    `Reserve - $${calculateTotalPrice().toFixed(2)}` : 
-                    'Reserve (Free)'}
+                  <Icon name="calendar" size={16} />
+                  Book This Space
                 </button>
               )}
             </div>
           </div>
+        )}
+        
+        {/* Booking Modal */}
+        {showBookingModal && (
+          <BookingModal
+            space={space}
+            onClose={() => setShowBookingModal(false)}
+            onBookingSuccess={handleBookingSuccess}
+          />
         )}
       </div>
     </div>
