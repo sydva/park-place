@@ -1,0 +1,5 @@
+fastapi
+trio
+hypothesis
+schemathesis
+pytest
