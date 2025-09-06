@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import SimpleTagInput from './SimpleTagInput';
+import Icon from './Icon';
 import './AddParkingSpace.css';
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -182,7 +183,8 @@ const AddParkingSpace = () => {
               className="camera-button"
               onClick={handleCameraClick}
             >
-              📷 Capture Photo
+              <Icon name="camera" size={18} />
+              Capture Photo
             </button>
             <input
               type="file"

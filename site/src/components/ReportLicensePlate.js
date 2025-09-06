@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Icon from './Icon';
 import './ReportLicensePlate.css';
 
 const ReportLicensePlate = () => {
@@ -60,7 +61,7 @@ const ReportLicensePlate = () => {
           />
         </div>
 
-        <div className="divider">OR</div>
+        <div className="divider"></div>
 
         <div className="camera-section">
           <h2>Take a Photo</h2>
@@ -69,7 +70,8 @@ const ReportLicensePlate = () => {
             className="camera-button"
             onClick={handleCameraClick}
           >
-            📷 Capture Photo
+            <Icon name="camera" size={18} />
+            Capture Photo
           </button>
           <input
             type="file"

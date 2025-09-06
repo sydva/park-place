@@ -1,0 +1,40 @@
+/* Map layout adjustments for search bar and list */
+.map-container-with-search {
+  position: relative;
+  height: 100vh;
+  width: 100%;
+}
+
+.map-wrapper {
+  position: absolute;
+  top: 80px; /* Height of search bar */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+}
+
+/* Wide screen layout adjustments */
+@media (min-width: 1200px) {
+  .map-wrapper {
+    left: 350px; /* Width of left sidebar */
+  }
+  
+  .search-bar-container {
+    left: 350px;
+  }
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .map-wrapper {
+    bottom: 200px; /* Make room for parking list */
+  }
+}
+
+/* Hide parking list by default on mobile when collapsed */
+@media (max-width: 1199px) {
+  .parking-space-list.hidden {
+    bottom: -160px; /* Partially hide, show header */
+  }
+}

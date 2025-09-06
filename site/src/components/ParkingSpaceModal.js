@@ -163,7 +163,8 @@ const ParkingSpaceModal = ({ space, onClose, userLocation }) => {
         <div className="modal-footer">
           <div className="footer-buttons">
             <button className="navigate-button" onClick={handleNavigate}>
-              🧭 Navigate Here
+              <Icon name="navigation" size={16} />
+              Navigate Here
             </button>
             <button className="reserve-button">
               Reserve This Spot

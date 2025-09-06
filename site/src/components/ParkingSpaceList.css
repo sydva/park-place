@@ -1,0 +1,245 @@
+.parking-space-list {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 1px solid #e0e0e0;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  max-height: 60vh;
+  transition: transform 0.3s ease;
+}
+
+.parking-space-list.hidden {
+  transform: translateY(calc(100% - 60px));
+}
+
+.parking-space-list.visible {
+  transform: translateY(0);
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fafafa;
+}
+
+.list-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.list-title h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #282c34;
+}
+
+.space-count {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.toggle-list-btn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  color: #666;
+  transition: color 0.2s ease;
+}
+
+.toggle-list-btn:hover {
+  color: #2196F3;
+}
+
+.list-content {
+  overflow-y: auto;
+  max-height: calc(60vh - 60px);
+}
+
+.spaces-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1px;
+  background: #f0f0f0;
+}
+
+.parking-space-item {
+  background: white;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-left: 4px solid transparent;
+}
+
+.parking-space-item:hover {
+  background: #f8f9fa;
+  border-left-color: #2196F3;
+}
+
+.space-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.space-type-price {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.space-type-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.space-price {
+  font-weight: 600;
+  color: #282c34;
+  font-size: 14px;
+}
+
+.space-distance {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+.space-rating {
+  margin-bottom: 8px;
+}
+
+.space-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.feature-tag {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: #f0f8ff;
+  color: #1976d2;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.feature-label {
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.more-features {
+  background: #f5f5f5;
+  color: #666;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.select-space-btn {
+  width: 100%;
+  background: #2196F3;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.select-space-btn:hover {
+  background: #1976d2;
+  transform: translateY(-1px);
+}
+
+.no-spaces {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+}
+
+.no-spaces p {
+  margin: 0 0 4px 0;
+}
+
+.no-spaces-subtitle {
+  font-size: 12px;
+  color: #999;
+}
+
+/* Wide screen layout - move to left side */
+@media (min-width: 1200px) {
+  .parking-space-list {
+    position: fixed;
+    top: 80px; /* Account for search bar */
+    bottom: 0;
+    left: 0;
+    right: auto;
+    width: 350px;
+    max-height: none;
+    border-top: none;
+    border-right: 1px solid #e0e0e0;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+  }
+
+  .parking-space-list.hidden {
+    transform: translateX(-290px);
+  }
+
+  .parking-space-list.visible {
+    transform: translateX(0);
+  }
+
+  .list-content {
+    max-height: none;
+    height: calc(100vh - 140px);
+  }
+
+  .toggle-list-btn {
+    transform: rotate(-90deg);
+  }
+
+  .spaces-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Medium screens */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .spaces-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .parking-space-list {
+    max-height: 50vh;
+  }
+
+  .list-content {
+    max-height: calc(50vh - 60px);
+  }
+}

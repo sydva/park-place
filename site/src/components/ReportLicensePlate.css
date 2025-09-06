@@ -57,7 +57,9 @@
 }
 
 .license-input {
-  width: 100%;
+  width: calc(100% - 32px);
+  max-width: 300px;
+  margin: 0 auto;
   padding: 15px;
   font-size: 18px;
   text-align: center;
@@ -67,6 +69,7 @@
   font-family: monospace;
   text-transform: uppercase;
   transition: border-color 0.2s ease;
+  display: block;
 }
 
 .license-input:focus {
@@ -122,6 +125,10 @@
   cursor: pointer;
   transition: background 0.2s ease;
   margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .camera-button:hover {

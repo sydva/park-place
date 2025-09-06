@@ -227,6 +227,10 @@
   cursor: pointer;
   flex: 1;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .navigate-button:hover {

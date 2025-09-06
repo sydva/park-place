@@ -12,7 +12,7 @@ const createParkingIcon = (type, price) => {
   const svgIcon = `
     <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
       <circle cx="${size/2}" cy="${size/2}" r="${size/2 - 1}" fill="${color}" stroke="#FFFFFF" stroke-width="2"/>
-      <text x="${size/2}" y="${size/2 + 3}" text-anchor="middle" fill="${textColor}" font-family="Arial, sans-serif" font-size="${size * 0.6}" font-weight="bold">P</text>
+      <text x="${size/2}" y="${size/2 + 1}" text-anchor="middle" dominant-baseline="middle" fill="${textColor}" font-family="Arial, sans-serif" font-size="${size * 0.6}" font-weight="bold">P</text>
     </svg>
   `;
 

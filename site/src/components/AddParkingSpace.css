@@ -88,6 +88,10 @@
   cursor: pointer;
   transition: background 0.2s ease;
   margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .camera-button:hover {

@@ -1,22 +1,38 @@
 // Mock parking space data - will be replaced with database calls
 export const generateParkingSpaces = (centerLat, centerLng) => {
   const spaces = [];
-  const radius = 0.01; // ~1km radius
+  const radius = 0.005; // ~500m radius for closer spaces
+  
+  // Calculate distance function
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Radius of the Earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c * 1000; // Convert to meters
+    return Math.round(distance);
+  };
   
   // Generate parking spaces in a grid around the center point
   for (let i = 0; i < 100; i++) {
     const latOffset = (Math.random() - 0.5) * radius * 2;
     const lngOffset = (Math.random() - 0.5) * radius * 2;
+    const spaceLat = centerLat + latOffset;
+    const spaceLng = centerLng + lngOffset;
     
     const space = {
       id: `space-${i}`,
-      lat: centerLat + latOffset,
-      lng: centerLng + lngOffset,
+      lat: spaceLat,
+      lng: spaceLng,
       type: Math.random() > 0.7 ? 'premium' : Math.random() > 0.4 ? 'standard' : 'basic',
       price: Math.random() > 0.5 ? Math.floor(Math.random() * 8) + 2 : 0, // 0 for free, 2-10 for paid
       rating: Math.random() * 2 + 3, // 3-5 star rating
       availability: Math.random() > 0.3, // 70% available
-      distance: Math.random() * 1000, // meters from user
+      distance: calculateDistance(centerLat, centerLng, spaceLat, spaceLng), // actual calculated distance
       timeLimit: Math.random() > 0.5 ? null : [30, 60, 120, 180][Math.floor(Math.random() * 4)], // minutes
       features: getRandomFeatures(),
     };

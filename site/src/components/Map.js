@@ -5,7 +5,11 @@ import L from 'leaflet';
 import UserMenu from './UserMenu';
 import ParkingSpaceMarker from './ParkingSpaceMarker';
 import ParkingSpaceModal from './ParkingSpaceModal';
+import SearchBar from './SearchBar';
+import ParkingSpaceList from './ParkingSpaceList';
+import FilterModal from './FilterModal';
 import { generateParkingSpaces, filterSpacesByZoom } from '../data/parkingSpaces';
+import './MapLayout.css';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -34,8 +38,19 @@ const Map = () => {
   const [error, setError] = useState(null);
   const [parkingSpaces, setParkingSpaces] = useState([]);
   const [visibleSpaces, setVisibleSpaces] = useState([]);
+  const [filteredSpaces, setFilteredSpaces] = useState([]);
   const [currentZoom, setCurrentZoom] = useState(16);
   const [selectedSpace, setSelectedSpace] = useState(null);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [listVisible, setListVisible] = useState(true);
+  const [filters, setFilters] = useState({
+    tags: [],
+    priceRange: [0, 20],
+    maxDistance: 5000,
+    spaceTypes: ['premium', 'standard', 'basic'],
+    availability: 'available',
+    rating: 0
+  });
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -52,6 +67,7 @@ const Map = () => {
         // Generate parking spaces around user location
         const spaces = generateParkingSpaces(userPos[0], userPos[1]);
         setParkingSpaces(spaces);
+        setFilteredSpaces(spaces);
         setVisibleSpaces(filterSpacesByZoom(spaces, 16));
         
         setLoading(false);
@@ -99,7 +115,8 @@ const Map = () => {
 
   const handleZoomChange = (zoom) => {
     setCurrentZoom(zoom);
-    setVisibleSpaces(filterSpacesByZoom(parkingSpaces, zoom));
+    const zoomFiltered = filterSpacesByZoom(filteredSpaces.length > 0 ? filteredSpaces : parkingSpaces, zoom);
+    setVisibleSpaces(zoomFiltered);
   };
 
   const handleMoveChange = (center) => {
@@ -108,19 +125,96 @@ const Map = () => {
 
   const handleParkingSpaceClick = (space) => {
     setSelectedSpace(space);
-    console.log('Selected parking space:', space);
   };
 
+  const handleLocationSearch = (location) => {
+    // Move map to searched location
+    console.log('Searching for location:', location);
+    // In real app, would update map center and generate new parking spaces
+  };
+
+  const handleAmenityFilter = (tagId) => {
+    // Add tag to filters
+    const newFilters = {
+      ...filters,
+      tags: [...filters.tags, tagId]
+    };
+    setFilters(newFilters);
+    applyFilters(newFilters);
+  };
+
+  const handleFiltersChange = (newFilters) => {
+    setFilters(newFilters);
+    applyFilters(newFilters);
+  };
+
+  const applyFilters = (currentFilters) => {
+    let filtered = [...parkingSpaces];
+
+    // Filter by availability
+    if (currentFilters.availability === 'available') {
+      filtered = filtered.filter(space => space.availability);
+    }
+
+    // Filter by space types
+    if (currentFilters.spaceTypes.length > 0) {
+      filtered = filtered.filter(space => currentFilters.spaceTypes.includes(space.type));
+    }
+
+    // Filter by price range
+    filtered = filtered.filter(space => 
+      space.price >= currentFilters.priceRange[0] && 
+      space.price <= currentFilters.priceRange[1]
+    );
+
+    // Filter by rating
+    if (currentFilters.rating > 0) {
+      filtered = filtered.filter(space => space.rating >= currentFilters.rating);
+    }
+
+    // Filter by tags
+    if (currentFilters.tags.length > 0) {
+      filtered = filtered.filter(space => 
+        currentFilters.tags.some(tag => space.features.includes(tag))
+      );
+    }
+
+    // Filter by distance (if user location available)
+    if (position && currentFilters.maxDistance) {
+      filtered = filtered.filter(space => space.distance <= currentFilters.maxDistance);
+    }
+
+    setFilteredSpaces(filtered);
+    
+    // Update visible spaces with zoom filtering applied to filtered results
+    const zoomFiltered = filterSpacesByZoom(filtered, currentZoom);
+    setVisibleSpaces(zoomFiltered);
+  };
+
+
   return (
-    <div style={{ height: '100vh', width: '100%' }}>
+    <div className="map-container-with-search">
       <UserMenu />
-      <MapContainer 
-        center={position} 
-        zoom={16} 
-        style={{ height: '100%', width: '100%' }}
-        zoomControl={false}
-        attributionControl={false}
-      >
+      
+      {/* Search Bar */}
+      <SearchBar 
+        onLocationSearch={handleLocationSearch}
+        onAmenityFilter={handleAmenityFilter}
+        onFilterClick={() => setShowFilterModal(true)}
+      />
+      
+      {/* Main Map Container */}
+      <div className="map-wrapper">
+        <MapContainer 
+          center={position} 
+          zoom={16} 
+          style={{ 
+            height: '100%', 
+            width: '100%'
+          }}
+          zoomControl={false}
+          attributionControl={false}
+        >
         <TileLayer
           attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
@@ -143,7 +237,26 @@ const Map = () => {
             onClick={handleParkingSpaceClick}
           />
         ))}
-      </MapContainer>
+        </MapContainer>
+      </div>
+      
+      {/* Parking Space List */}
+      <ParkingSpaceList
+        spaces={filteredSpaces.length > 0 ? filteredSpaces : parkingSpaces}
+        userLocation={position}
+        onSpaceClick={handleParkingSpaceClick}
+        onSpaceSelect={handleParkingSpaceClick}
+        isVisible={listVisible}
+        onToggle={() => setListVisible(!listVisible)}
+      />
+      
+      {/* Filter Modal */}
+      <FilterModal
+        isOpen={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+      />
       
       {/* Parking Space Modal */}
       {selectedSpace && (
