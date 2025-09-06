@@ -136,3 +136,55 @@ python -m backend.main
 3. Implement auth system
 4. Build core CRUD endpoints
 5. Test with frontend integration
+
+## Testing Tips
+
+### Environment Setup
+- Always use the `.venv` virtual environment: `source .venv/bin/activate`
+- Install dependencies with uv: `uv pip install -r requirements.txt`
+- Don't use system Python or other environments
+- Check active environment with: `which pytest` (should show `.venv/bin/pytest`)
+
+### Port Management
+- Test scripts automatically find available ports
+- Don't kill existing servers - tests use fresh ports each time
+- Multiple test runs can happen simultaneously without conflicts
+
+### Running Tests
+
+#### Pytest Tests (server starts automatically)
+```bash
+# Activate environment first (if not already active)
+source .venv/bin/activate
+
+# Install dependencies
+uv pip install -r requirements.txt
+
+# Run all tests (server starts automatically)
+pytest backend/tests/
+
+# Run specific test file
+pytest backend/tests/test_basic.py -v
+```
+
+#### Schemathesis CLI Tests
+```bash
+# Run all Schemathesis tests (starts/stops server automatically)
+./backend/tests/run_schemathesis.sh
+
+# Or manually:
+# In terminal 1: Start the server
+uvicorn backend.main:app --reload
+
+# In terminal 2: Run Schemathesis
+schemathesis run http://localhost:8000/openapi.json
+
+# Or run the Python CLI test script
+python backend/tests/test_cli_schemathesis.py
+```
+
+## Development Tips
+
+* NEVER write defensive code, or work around errors.  We should crash early and often.
+* After you've written some code, do a second editing pass to make it concise and idiomatic.  For example, minimal use of comments.
+* Run pre-commit checks after each edit, to check that it's in good shape.

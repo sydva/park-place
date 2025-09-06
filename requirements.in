@@ -1,5 +1,10 @@
 fastapi
 anyio
+uvicorn
+python-jose[cryptography]
+pyjwt
+passlib[bcrypt]
+python-multipart
 hypothesis
 schemathesis
 pytest
