@@ -25,6 +25,7 @@ export const generateParkingSpaces = (centerLat, centerLng) => {
     const spaceLng = centerLng + lngOffset;
     
     const hasPrice = Math.random() > 0.3; // 70% of spaces have pricing
+    const requiresVerification = Math.random() > 0.6; // 40% require verification
     const space = {
       id: `space-${i}`,
       lat: spaceLat,
@@ -41,6 +42,9 @@ export const generateParkingSpaces = (centerLat, centerLng) => {
       paymentType: hasPrice ? (Math.random() > 0.5 ? 'hourly' : 'flat') : null,
       maxHours: hasPrice ? Math.floor(Math.random() * 8) + 1 : null, // 1-8 hours max
       ownerId: hasPrice ? `owner-${Math.floor(Math.random() * 20)}` : null, // Some spaces are owned privately
+      // Verification-related fields
+      requiresVerification: requiresVerification,
+      verificationReason: requiresVerification ? getVerificationReason() : null,
     };
     
     spaces.push(space);
@@ -70,6 +74,18 @@ const getRandomFeatures = () => {
   }
   
   return features;
+};
+
+const getVerificationReason = () => {
+  const reasons = [
+    'Private property',
+    'Secure building access',
+    'Resident parking only',
+    'Premium member area',
+    'Gated community',
+    'Corporate parking'
+  ];
+  return reasons[Math.floor(Math.random() * reasons.length)];
 };
 
 // Filter spaces based on zoom level (like Google Maps)

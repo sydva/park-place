@@ -12,7 +12,7 @@
 }
 
 .parking-space-list.hidden {
-  transform: translateY(calc(100% - 60px));
+  transform: translateY(calc(100% - 50px)); /* Hide all but header for toggle button */
 }
 
 .parking-space-list.visible {
@@ -40,12 +40,27 @@
   color: #282c34;
 }
 
+.space-counts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .space-count {
   background: #e3f2fd;
   color: #1976d2;
   padding: 2px 8px;
   border-radius: 12px;
   font-size: 12px;
+  font-weight: 500;
+}
+
+.additional-count {
+  background: #f3e5f5;
+  color: #7b1fa2;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 10px;
   font-weight: 500;
 }
 
@@ -119,6 +134,11 @@
 
 .payment-indicator {
   color: #FFD700;
+  margin-left: 2px;
+}
+
+.verification-indicator {
+  color: #9C27B0;
   margin-left: 2px;
 }
 
@@ -204,7 +224,7 @@
 @media (min-width: 1200px) {
   .parking-space-list {
     position: fixed;
-    top: 80px; /* Account for search bar */
+    top: 0; /* Full height since search bar is floating */
     bottom: 0;
     left: 0;
     right: auto;
@@ -216,7 +236,7 @@
   }
 
   .parking-space-list.hidden {
-    transform: translateX(-290px);
+    transform: translateX(-338px); /* Hide all but ~12px for the toggle nub */
   }
 
   .parking-space-list.visible {
@@ -225,11 +245,29 @@
 
   .list-content {
     max-height: none;
-    height: calc(100vh - 140px);
+    height: calc(100vh - 60px); /* Just account for header */
   }
 
   .toggle-list-btn {
-    transform: rotate(-90deg);
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%) rotate(-90deg);
+    z-index: 1001;
+  }
+  
+  .parking-space-list.hidden .toggle-list-btn {
+    right: -22px; /* Position just outside the hidden panel */
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .list-header {
+    position: relative;
   }
 
   .spaces-grid {

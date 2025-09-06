@@ -45,6 +45,9 @@ const Map = () => {
   const [listVisible, setListVisible] = useState(true);
   const [mapCenter, setMapCenter] = useState(null);
   const [searchLocation, setSearchLocation] = useState(null);
+  
+  // Mock user verification status - in real app, get from auth context
+  const [isUserVerified] = useState(Math.random() > 0.5);
   const [filters, setFilters] = useState({
     tags: [],
     priceRange: [0, 20],
@@ -217,7 +220,7 @@ const Map = () => {
       />
       
       {/* Main Map Container */}
-      <div className="map-wrapper">
+      <div className={`map-wrapper ${listVisible ? 'with-sidebar' : 'sidebar-hidden'}`}>
         <MapContainer 
           center={mapCenter || position} 
           zoom={16} 
@@ -259,14 +262,16 @@ const Map = () => {
           </Marker>
         )}
         {/* Parking space markers */}
-        {visibleSpaces.map((space) => (
-          <ParkingSpaceMarker 
-            key={space.id}
-            space={space}
-            showPrice={currentZoom > 17}
-            onClick={handleParkingSpaceClick}
-          />
-        ))}
+        {visibleSpaces
+          .filter(space => isUserVerified || !space.requiresVerification)
+          .map((space) => (
+            <ParkingSpaceMarker 
+              key={space.id}
+              space={space}
+              showPrice={currentZoom > 17}
+              onClick={handleParkingSpaceClick}
+            />
+          ))}
         </MapContainer>
       </div>
       
@@ -278,6 +283,7 @@ const Map = () => {
         onSpaceSelect={handleParkingSpaceClick}
         isVisible={listVisible}
         onToggle={() => setListVisible(!listVisible)}
+        isUserVerified={isUserVerified}
       />
       
       {/* Filter Modal */}

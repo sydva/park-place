@@ -8,7 +8,6 @@ const SearchBar = ({ onLocationSearch, onAmenityFilter, onFilterClick }) => {
   const [searchValue, setSearchValue] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [searchType, setSearchType] = useState('location'); // 'location' or 'amenity'
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef(null);
   const suggestionsRef = useRef(null);
@@ -53,22 +52,55 @@ const SearchBar = ({ onLocationSearch, onAmenityFilter, onFilterClick }) => {
       return;
     }
 
-    if (searchType === 'location') {
+    // Search both locations and amenities simultaneously
+    const searchBoth = async () => {
       setIsLoading(true);
-      debouncedLocationSearch(searchValue);
-    } else {
-      // Filter amenity/tag suggestions
-      const tagSuggestions = searchTags(searchValue).map(tag => ({
-        type: 'amenity',
-        id: tag.id,
-        name: tag.label,
-        description: tag.description,
-        icon: tag.icon
-      }));
-      setSuggestions(tagSuggestions.slice(0, 5));
-      setShowSuggestions(tagSuggestions.length > 0);
-    }
-  }, [searchValue, searchType, debouncedLocationSearch]);
+      
+      // Get location suggestions (if 3+ chars)
+      const locationPromise = searchValue.length >= 3 
+        ? searchLocations(searchValue).then(results => results.map(result => ({
+            type: 'location',
+            name: result.name,
+            fullName: result.fullName,
+            address: result.formattedAddress,
+            lat: result.lat,
+            lng: result.lng
+          })))
+        : Promise.resolve([]);
+
+      // Get amenity suggestions
+      const amenityPromise = Promise.resolve(
+        searchTags(searchValue).map(tag => ({
+          type: 'amenity',
+          id: tag.id,
+          name: tag.label,
+          description: tag.description,
+          icon: tag.icon
+        }))
+      );
+
+      try {
+        const [locationResults, amenityResults] = await Promise.all([locationPromise, amenityPromise]);
+        
+        // Combine results, prioritizing locations for longer queries
+        const combined = searchValue.length >= 3 
+          ? [...locationResults.slice(0, 3), ...amenityResults.slice(0, 2)]
+          : amenityResults.slice(0, 5);
+        
+        setSuggestions(combined);
+        setShowSuggestions(combined.length > 0);
+      } catch (error) {
+        console.error('Search error:', error);
+        setSuggestions([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    // Debounce the combined search
+    const timeoutId = setTimeout(searchBoth, 300);
+    return () => clearTimeout(timeoutId);
+  }, [searchValue]);
 
   // Handle clicking outside
   useEffect(() => {
@@ -137,23 +169,6 @@ const SearchBar = ({ onLocationSearch, onAmenityFilter, onFilterClick }) => {
   return (
     <div className="search-bar-container">
       <div className="search-bar">
-        <div className="search-type-tabs">
-          <button 
-            className={`search-tab ${searchType === 'location' ? 'active' : ''}`}
-            onClick={() => setSearchType('location')}
-          >
-            <Icon name="map-pin" size={16} className="suggestion-icon location-icon" />
-            <span>Location</span>
-          </button>
-          <button 
-            className={`search-tab ${searchType === 'amenity' ? 'active' : ''}`}
-            onClick={() => setSearchType('amenity')}
-          >
-            <Icon name="tag" size={16} className="suggestion-icon" />
-            <span>Amenities</span>
-          </button>
-        </div>
-
         <div className="search-input-container">
           <form onSubmit={handleFormSubmit} className="search-form">
             <div className="search-input-wrapper">
@@ -164,11 +179,7 @@ const SearchBar = ({ onLocationSearch, onAmenityFilter, onFilterClick }) => {
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
                 onFocus={handleFocus}
-                placeholder={
-                  searchType === 'location' 
-                    ? 'Search locations...' 
-                    : 'Search amenities (covered, EV charging, etc.)'
-                }
+                placeholder="Search locations or amenities..."
                 className="search-input"
               />
               {searchValue && (
@@ -176,10 +187,13 @@ const SearchBar = ({ onLocationSearch, onAmenityFilter, onFilterClick }) => {
                   ✕
                 </button>
               )}
+              <button type="submit" className="submit-search-btn" aria-label="Search">
+                <Icon name="search" size={16} />
+              </button>
             </div>
           </form>
           
-          <button type="button" className="filter-btn" onClick={onFilterClick}>
+          <button type="button" className="filter-btn" onClick={onFilterClick} aria-label="Open filters">
             <Icon name="filter" size={18} />
             <span>Filter</span>
           </button>
@@ -218,9 +232,9 @@ const SearchBar = ({ onLocationSearch, onAmenityFilter, onFilterClick }) => {
                   )}
                 </button>
               ))
-            ) : searchType === 'location' && searchValue.length >= 3 ? (
+            ) : searchValue.length >= 1 ? (
               <div className="no-suggestions">
-                <span>No locations found for "{searchValue}"</span>
+                <span>No results found for "{searchValue}"</span>
               </div>
             ) : null}
           </div>

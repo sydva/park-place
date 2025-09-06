@@ -2,7 +2,7 @@
   position: fixed;
   top: 20px;
   right: 20px;
-  z-index: 1000;
+  z-index: 1600; /* Above search bar */
 }
 
 .menu-button {
@@ -29,7 +29,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 999;
+  z-index: 1599; /* Below menu button but above everything else */
 }
 
 .menu-backdrop {
@@ -77,6 +77,24 @@
 .menu-item strong {
   display: inline-block;
   width: 80px;
+}
+
+.verification-status {
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.verification-status.verified {
+  background: #e8f5e8;
+  color: #2e7d32;
+}
+
+.verification-status.unverified {
+  background: #fff3e0;
+  color: #f57c00;
 }
 
 .menu-action-button {

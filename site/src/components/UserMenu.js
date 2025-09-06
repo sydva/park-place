@@ -10,7 +10,8 @@ const UserMenu = () => {
   const userData = {
     username: 'JohnDoe',
     rating: 1247,
-    licensePlate: 'ABC-123'
+    licensePlate: 'ABC-123',
+    isVerified: Math.random() > 0.5 // 50% chance of being verified for demo
   };
 
   const toggleMenu = () => {
@@ -51,6 +52,12 @@ const UserMenu = () => {
             </div>
             <div className="menu-item">
               <strong>License Plate:</strong> {userData.licensePlate}
+            </div>
+            <div className="menu-item">
+              <strong>Status:</strong> 
+              <span className={`verification-status ${userData.isVerified ? 'verified' : 'unverified'}`}>
+                {userData.isVerified ? '✓ Verified' : '⚠ Unverified'}
+              </span>
             </div>
             <button className="menu-action-button" onClick={handleReportLicensePlate}>
               Report License Plate

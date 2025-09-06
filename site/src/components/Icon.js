@@ -27,7 +27,8 @@ import {
   MdTerrain,
   MdArrowDownward,
   MdRoofing,
-  MdLocalOffer
+  MdLocalOffer,
+  MdSearch
 } from 'react-icons/md';
 
 // Icon components using Material Design icons via react-icons
@@ -74,7 +75,8 @@ const IconComponents = {
   filter: MdFilterList,
   navigation: MdNavigation,
   camera: MdPhotoCamera,
-  tag: MdLocalOffer
+  tag: MdLocalOffer,
+  search: MdSearch
 };
 
 const Icon = ({ name, size = 16, className = '' }) => {

@@ -7,7 +7,7 @@
 
 .map-wrapper {
   position: absolute;
-  top: 80px; /* Height of search bar */
+  top: 0; /* No need to account for floating search bar */
   left: 0;
   right: 0;
   bottom: 0;
@@ -16,25 +16,25 @@
 
 /* Wide screen layout adjustments */
 @media (min-width: 1200px) {
-  .map-wrapper {
+  .map-wrapper.with-sidebar {
     left: 350px; /* Width of left sidebar */
+    right: 0;
   }
-  
-  .search-bar-container {
-    left: 350px;
+
+  .map-wrapper.sidebar-hidden {
+    left: 20px; /* smaller nub space to maximize map */
+    right: 0;
   }
 }
 
 /* Mobile adjustments */
 @media (max-width: 768px) {
-  .map-wrapper {
-    bottom: 200px; /* Make room for parking list */
+  .map-wrapper.with-sidebar {
+    bottom: 200px; /* Make room for parking list when visible */
+  }
+
+  .map-wrapper.sidebar-hidden {
+    bottom: 50px; /* Leave space only for collapsed header nub */
   }
 }
 
-/* Hide parking list by default on mobile when collapsed */
-@media (max-width: 1199px) {
-  .parking-space-list.hidden {
-    bottom: -160px; /* Partially hide, show header */
-  }
-}

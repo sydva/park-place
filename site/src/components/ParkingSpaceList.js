@@ -57,6 +57,7 @@ const ParkingSpaceListItem = ({ space, userLocation, onSpaceClick, onSpaceSelect
           <span className="space-price">
             {formatPrice(space)}
             {space.requiresPayment && <Icon name="dollar" size={12} className="payment-indicator" />}
+            {space.requiresVerification && <Icon name="check" size={12} className="verification-indicator" />}
           </span>
         </div>
         <div className="space-distance">{formatDistance(distance)}</div>
@@ -102,23 +103,39 @@ const ParkingSpaceList = ({
   onSpaceClick, 
   onSpaceSelect,
   isVisible = true,
-  onToggle 
+  onToggle,
+  isUserVerified = false
 }) => {
-  // Sort spaces by distance if user location is available
+  // Filter and sort spaces based on user verification status
+  const visibleSpaces = isUserVerified 
+    ? spaces 
+    : spaces.filter(space => !space.requiresVerification);
+  
+  const hiddenSpaces = isUserVerified 
+    ? [] 
+    : spaces.filter(space => space.requiresVerification);
+
   const sortedSpaces = userLocation 
-    ? [...spaces].sort((a, b) => {
+    ? [...visibleSpaces].sort((a, b) => {
         const distA = Math.sqrt(Math.pow(a.lat - userLocation[0], 2) + Math.pow(a.lng - userLocation[1], 2));
         const distB = Math.sqrt(Math.pow(b.lat - userLocation[0], 2) + Math.pow(b.lng - userLocation[1], 2));
         return distA - distB;
       })
-    : spaces;
+    : visibleSpaces;
 
   return (
     <div className={`parking-space-list ${isVisible ? 'visible' : 'hidden'}`}>
       <div className="list-header">
         <div className="list-title">
           <h3>Nearby Parking</h3>
-          <span className="space-count">{sortedSpaces.length} spaces</span>
+          <div className="space-counts">
+            <span className="space-count">{sortedSpaces.length} spaces</span>
+            {hiddenSpaces.length > 0 && (
+              <span className="additional-count">
+                +{hiddenSpaces.length} more with verification
+              </span>
+            )}
+          </div>
         </div>
         <button className="toggle-list-btn" onClick={onToggle}>
           {isVisible ? '▼' : '▲'}
