@@ -12,6 +12,32 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
+// Create a red icon for parking space pins
+const parkingIcon = new L.Icon({
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+// Create a blue icon for current location
+const currentLocationIcon = new L.Icon({
+  iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41">
+      <path fill="#2196F3" stroke="#fff" stroke-width="2" d="M12.5 0C5.6 0 0 5.6 0 12.5c0 8.8 12.5 28.5 12.5 28.5S25 21.3 25 12.5C25 5.6 19.4 0 12.5 0z"/>
+      <circle fill="#fff" cx="12.5" cy="12.5" r="6"/>
+    </svg>
+  `),
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  shadowSize: [41, 41],
+});
+
 const LocationMarker = ({ position, setPosition }) => {
   const map = useMapEvents({
     click(e) {
@@ -20,7 +46,7 @@ const LocationMarker = ({ position, setPosition }) => {
   });
 
   return position === null ? null : (
-    <Marker position={position}>
+    <Marker position={position} icon={parkingIcon}>
     </Marker>
   );
 };
@@ -101,6 +127,10 @@ const AddParkingSpace = () => {
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
+              {/* Current location marker (blue) */}
+              <Marker position={position} icon={currentLocationIcon}>
+              </Marker>
+              {/* Parking space marker (red) */}
               <LocationMarker position={pinPosition} setPosition={setPinPosition} />
             </MapContainer>
           </div>
