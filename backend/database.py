@@ -39,13 +39,14 @@ def init_database():
         conn.execute("""
             CREATE TABLE IF NOT EXISTS places (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT NOT NULL,
-                description TEXT NOT NULL,
+                title TEXT,
+                description TEXT,
                 added_by INTEGER NOT NULL,
                 owned_by INTEGER,
                 latitude DECIMAL(10, 8),
                 longitude DECIMAL(10, 8),
                 address TEXT NOT NULL,
+                price_per_hour DECIMAL(10, 2) DEFAULT 0,
                 is_published BOOLEAN DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -75,6 +76,15 @@ def init_database():
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_places_longitude ON places(longitude)"
         )
+
+        # Add price_per_hour column if it doesn't exist (for existing databases)
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(places)")
+        columns = [column[1] for column in cursor.fetchall()]
+        if "price_per_hour" not in columns:
+            conn.execute(
+                "ALTER TABLE places ADD COLUMN price_per_hour DECIMAL(10, 2) DEFAULT 0"
+            )
 
         conn.commit()
 
@@ -182,23 +192,33 @@ def create_provider(email: str, username: str, hashed_password: str) -> int:
 
 # Place CRUD operations
 def create_place(
-    title: str,
-    description: str,
     added_by: int,
+    title: str | None = None,
+    description: str | None = None,
     owned_by: int | None = None,
     latitude: float | None = None,
     longitude: float | None = None,
     address: str | None = None,
+    price_per_hour: float = 0.0,
 ) -> int:
     """Create a new place and return the place ID"""
     with get_db() as conn:
         cursor = conn.execute(
             """
             INSERT INTO places (title, description, added_by, owned_by,
-                latitude, longitude, address)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                latitude, longitude, address, price_per_hour)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
-            (title, description, added_by, owned_by, latitude, longitude, address),
+            (
+                title,
+                description,
+                added_by,
+                owned_by,
+                latitude,
+                longitude,
+                address,
+                price_per_hour,
+            ),
         )
         return cursor.lastrowid or 0
 
@@ -282,6 +302,7 @@ def update_place(place_id: int, **kwargs: Any) -> bool:
         "longitude",
         "address",
         "is_published",
+        "price_per_hour",
     ]
     updates: list[str] = []
     params: list[Any] = []

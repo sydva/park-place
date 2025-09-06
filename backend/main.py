@@ -59,11 +59,11 @@ class UserResponse(BaseModel):
 
 
 class ParkingSpace(BaseModel):
-    title: str
-    description: str
+    title: str | None = None
+    description: str | None = None
     lat: float
     lng: float
-    price_per_hour: float = Field(..., ge=0)  # Must be non-negative
+    price_per_hour: float = Field(default=0.0, ge=0)  # Must be non-negative
     tags: list[str] = []
     image_url: str | None = None
 
@@ -90,11 +90,11 @@ class ParkingSpace(BaseModel):
 class ParkingSpaceResponse(BaseModel):
     id: int
     owner_id: int
-    title: str
-    description: str
+    title: str | None = None
+    description: str | None = None
     lat: float
     lng: float
-    price_per_hour: float
+    price_per_hour: float = 0.0
     tags: list[str]
     rating: float = 0.0
     is_available: bool = True
@@ -340,7 +340,7 @@ async def get_spaces(limit: Annotated[int, Query(ge=1, le=10000)] = 100):
             description=place["description"],
             lat=place["latitude"] or 0.0,
             lng=place["longitude"] or 0.0,
-            price_per_hour=10.0,  # TODO: Add price field to database
+            price_per_hour=place.get("price_per_hour", 0.0),
             tags=[],  # TODO: Add tags system
             rating=0.0,
             is_available=True,
@@ -359,7 +359,7 @@ async def search_spaces(query: SearchQuery):
 
     results: list[ParkingSpaceResponse] = []
     for place in places:
-        price = 10.0  # TODO: Add price field to database
+        price = place.get("price_per_hour", 0.0)
 
         if query.min_price and price < query.min_price:
             continue
@@ -403,15 +403,16 @@ async def create_space(space: ParkingSpace):
     current_user = get_current_user()
 
     place_id = db.create_place(
+        added_by=current_user["id"],
         title=space.title,
         description=space.description,
-        added_by=current_user["id"],
         owned_by=current_user["id"]
         if current_user["user_type"] == "provider"
         else None,
         latitude=space.lat,
         longitude=space.lng,
         address="",  # TODO: Add geocoding
+        price_per_hour=space.price_per_hour,
     )
 
     place = db.get_place_by_id(place_id)
@@ -453,7 +454,7 @@ async def get_space(space_id: Annotated[int, Path(ge=0, le=2147483647)]):
         description=place["description"],
         lat=place["latitude"] or 0.0,
         lng=place["longitude"] or 0.0,
-        price_per_hour=10.0,  # TODO: Add price field
+        price_per_hour=place.get("price_per_hour", 0.0),
         tags=[],
         rating=0.0,
         is_available=True,
@@ -492,6 +493,7 @@ async def update_space(
         description=space.description,
         latitude=space.lat,
         longitude=space.lng,
+        price_per_hour=space.price_per_hour,
     )
 
     updated_place = db.get_place_by_id(space_id)
@@ -634,7 +636,7 @@ async def create_booking(booking: Booking):
     next_booking_id += 1
 
     hours = (booking.end_time - booking.start_time).total_seconds() / 3600
-    total_price = hours * 10.0  # TODO: Get price from database
+    total_price = hours * place.get("price_per_hour", 0.0)
 
     created_at = datetime.now().replace(microsecond=0).isoformat() + "Z"
 
