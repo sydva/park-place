@@ -1,9 +1,9 @@
 ### users
-- [ ] login & auth
+- [x] login & auth
 - [ ] renter rating
-- [ ]renter flow
+- [ ] renter flow
   - [ ] registration - add car license plate etc
-- [ ]lister flow
+- [ ] lister flow
 
 ### space
 - [ ] show and add parking spaces
