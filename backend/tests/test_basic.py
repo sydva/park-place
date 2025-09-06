@@ -3,7 +3,7 @@
 import requests
 
 
-def test_server_is_running(base_url):
+def test_server_is_running(base_url: str) -> None:
     """Test that the server starts and responds."""
     response = requests.get(f"{base_url}/")
     assert response.status_code == 200
@@ -12,7 +12,7 @@ def test_server_is_running(base_url):
     assert data["message"] == "Park Place API"
 
 
-def test_openapi_available(base_url):
+def test_openapi_available(base_url: str) -> None:
     """Test that OpenAPI schema is available."""
     response = requests.get(f"{base_url}/openapi.json")
     assert response.status_code == 200
@@ -22,7 +22,7 @@ def test_openapi_available(base_url):
     assert schema["info"]["title"] == "Park Place API"
 
 
-def test_docs_available(base_url):
+def test_docs_available(base_url: str) -> None:
     """Test that API docs are available."""
     response = requests.get(f"{base_url}/docs")
     assert response.status_code == 200

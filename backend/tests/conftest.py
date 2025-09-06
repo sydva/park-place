@@ -1,16 +1,18 @@
-import pytest
-from fastapi.testclient import TestClient
+import socket
 import sys
-from pathlib import Path
 import threading
 import time
+from collections.abc import Generator
+from pathlib import Path
+
+import pytest
 import uvicorn
-import socket
+from fastapi.testclient import TestClient
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 
-def get_free_port():
+def get_free_port() -> int:
     """Get a free port for testing."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("", 0))
@@ -20,7 +22,7 @@ def get_free_port():
 
 
 @pytest.fixture(scope="session")
-def test_server():
+def test_server() -> Generator[str, None, None]:
     """Start the FastAPI server in a background thread for the entire test session."""
     from backend.main import app
 
@@ -39,7 +41,7 @@ def test_server():
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=1):
                 break
-        except (socket.error, ConnectionRefusedError):
+        except (OSError, ConnectionRefusedError):
             time.sleep(0.1)
     else:
         raise RuntimeError(f"Server failed to start on port {port}")
@@ -50,13 +52,13 @@ def test_server():
 
 
 @pytest.fixture(scope="session")
-def base_url(test_server):
+def base_url(test_server: str) -> str:
     """Provide the base URL for the test server."""
     return test_server
 
 
 @pytest.fixture
-def client():
+def client() -> TestClient:
     """Create a test client."""
     from backend.main import app
 

@@ -2,6 +2,31 @@
 venvPath = "."
 venv = ".venv"
 pythonVersion = "3.12"
-typeCheckingMode = "basic"
+typeCheckingMode = "strict"
 reportMissingImports = "none"
 reportMissingModuleSource = "none"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+unsafe-fixes = true
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "SIM",    # flake8-simplify
+    "I",      # isort
+]
+ignore = [
+    "B008",   # Do not perform function call in argument defaults (FastAPI pattern)
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"

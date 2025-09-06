@@ -1,7 +1,7 @@
-import sqlite3
 import os
+import sqlite3
 from contextlib import contextmanager
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 # Database configuration
 DB_PATH = os.getenv("DB_PATH", "./app.db")
@@ -60,7 +60,8 @@ def init_database():
             "CREATE INDEX IF NOT EXISTS idx_parkers_username ON parkers(username)"
         )
         conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_parkers_license_plate ON parkers(license_plate)"
+            "CREATE INDEX IF NOT EXISTS idx_parkers_license_plate "
+            "ON parkers(license_plate)"
         )
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_providers_email ON providers(email)"
@@ -98,14 +99,15 @@ def create_parker(
     email: str,
     username: str,
     hashed_password: str,
-    license_plate_state: Optional[str] = None,
-    license_plate: Optional[str] = None,
+    license_plate_state: str | None = None,
+    license_plate: str | None = None,
 ) -> int:
     """Create a new parker and return the parker ID"""
     with get_db() as conn:
         cursor = conn.execute(
             """
-            INSERT INTO parkers (email, username, hashed_password, license_plate_state, license_plate)
+            INSERT INTO parkers (email, username, hashed_password,
+                license_plate_state, license_plate)
             VALUES (?, ?, ?, ?, ?)
         """,
             (email, username, hashed_password, license_plate_state, license_plate),
@@ -113,7 +115,7 @@ def create_parker(
         return cursor.lastrowid or 0
 
 
-def get_parker_by_email(email: str) -> Optional[Dict[str, Any]]:
+def get_parker_by_email(email: str) -> dict[str, Any] | None:
     """Get parker by email"""
     with get_db() as conn:
         cursor = conn.execute(
@@ -126,7 +128,7 @@ def get_parker_by_email(email: str) -> Optional[Dict[str, Any]]:
         return dict(row) if row else None
 
 
-def get_provider_by_email(email: str) -> Optional[Dict[str, Any]]:
+def get_provider_by_email(email: str) -> dict[str, Any] | None:
     """Get provider by email"""
     with get_db() as conn:
         cursor = conn.execute(
@@ -139,7 +141,7 @@ def get_provider_by_email(email: str) -> Optional[Dict[str, Any]]:
         return dict(row) if row else None
 
 
-def get_parker_by_id(parker_id: int) -> Optional[Dict[str, Any]]:
+def get_parker_by_id(parker_id: int) -> dict[str, Any] | None:
     """Get parker by ID"""
     with get_db() as conn:
         cursor = conn.execute(
@@ -152,7 +154,7 @@ def get_parker_by_id(parker_id: int) -> Optional[Dict[str, Any]]:
         return dict(row) if row else None
 
 
-def get_provider_by_id(provider_id: int) -> Optional[Dict[str, Any]]:
+def get_provider_by_id(provider_id: int) -> dict[str, Any] | None:
     """Get provider by ID"""
     with get_db() as conn:
         cursor = conn.execute(
@@ -183,16 +185,17 @@ def create_place(
     title: str,
     description: str,
     added_by: int,
-    owned_by: Optional[int] = None,
-    latitude: Optional[float] = None,
-    longitude: Optional[float] = None,
-    address: Optional[str] = None,
+    owned_by: int | None = None,
+    latitude: float | None = None,
+    longitude: float | None = None,
+    address: str | None = None,
 ) -> int:
     """Create a new place and return the place ID"""
     with get_db() as conn:
         cursor = conn.execute(
             """
-            INSERT INTO places (title, description, added_by, owned_by, latitude, longitude, address)
+            INSERT INTO places (title, description, added_by, owned_by,
+                latitude, longitude, address)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
             (title, description, added_by, owned_by, latitude, longitude, address),
@@ -200,7 +203,7 @@ def create_place(
         return cursor.lastrowid or 0
 
 
-def get_place_by_id(place_id: int) -> Optional[Dict[str, Any]]:
+def get_place_by_id(place_id: int) -> dict[str, Any] | None:
     """Get place by ID"""
     with get_db() as conn:
         cursor = conn.execute(
@@ -215,14 +218,14 @@ def get_place_by_id(place_id: int) -> Optional[Dict[str, Any]]:
 
 def get_places_by_owner(
     owner_id: int, skip: int = 0, limit: int = 100
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Get places by owner ID"""
     with get_db() as conn:
         cursor = conn.execute(
             """
-            SELECT * FROM places 
-            WHERE owned_by = ? 
-            ORDER BY created_at DESC 
+            SELECT * FROM places
+            WHERE owned_by = ?
+            ORDER BY created_at DESC
             LIMIT ? OFFSET ?
         """,
             (owner_id, limit, skip),
@@ -230,14 +233,14 @@ def get_places_by_owner(
         return [dict(row) for row in cursor.fetchall()]
 
 
-def get_published_places(skip: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
+def get_published_places(skip: int = 0, limit: int = 100) -> list[dict[str, Any]]:
     """Get published places"""
     with get_db() as conn:
         cursor = conn.execute(
             """
-            SELECT * FROM places 
-            WHERE is_published = 1 
-            ORDER BY created_at DESC 
+            SELECT * FROM places
+            WHERE is_published = 1
+            ORDER BY created_at DESC
             LIMIT ? OFFSET ?
         """,
             (limit, skip),
@@ -247,7 +250,7 @@ def get_published_places(skip: int = 0, limit: int = 100) -> List[Dict[str, Any]
 
 def search_places_by_location(
     lat: float, lng: float, radius_km: float = 1.0
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Search places within radius of given coordinates"""
     with get_db() as conn:
         # Simple bounding box search (for MVP - in production use PostGIS)
@@ -260,7 +263,7 @@ def search_places_by_location(
 
         cursor = conn.execute(
             """
-            SELECT * FROM places 
+            SELECT * FROM places
             WHERE latitude BETWEEN ? AND ?
             AND longitude BETWEEN ? AND ?
             AND is_published = 1
@@ -270,7 +273,7 @@ def search_places_by_location(
         return [dict(row) for row in cursor.fetchall()]
 
 
-def update_place(place_id: int, **kwargs) -> bool:
+def update_place(place_id: int, **kwargs: Any) -> bool:
     """Update a place"""
     allowed_fields = [
         "title",
@@ -280,8 +283,8 @@ def update_place(place_id: int, **kwargs) -> bool:
         "address",
         "is_published",
     ]
-    updates = []
-    params = []
+    updates: list[str] = []
+    params: list[Any] = []
 
     for field, value in kwargs.items():
         if field in allowed_fields and value is not None:
@@ -297,7 +300,7 @@ def update_place(place_id: int, **kwargs) -> bool:
     with get_db() as conn:
         cursor = conn.execute(
             f"""
-            UPDATE places 
+            UPDATE places
             SET {", ".join(updates)}
             WHERE id = ?
         """,

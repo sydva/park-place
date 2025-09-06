@@ -2,12 +2,14 @@ from contextlib import asynccontextmanager
 from typing import Annotated, Any, TypedDict
 from datetime import datetime
 from pathlib import Path as FilePath
+from typing import Annotated, Any, TypedDict
 
 import anyio
-from fastapi import FastAPI, HTTPException, UploadFile, File, Query, Path
+from fastapi import FastAPI, File, HTTPException, Path, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator, ValidationInfo
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from backend import database as db
 
@@ -252,6 +254,7 @@ async def register(user: UserRegister):
                 )
         else:
             raise HTTPException(status_code=500, detail="Registration failed") from None
+<<<<<<< HEAD
 
     # If user type is "both", also create provider record
     if user.user_type == "both":
@@ -264,6 +267,8 @@ async def register(user: UserRegister):
         except Exception as e:
             # If provider creation fails, it's not critical for MVP
             print(f"Warning: Failed to create provider record for 'both' user: {e}")
+=======
+>>>>>>> e9d60e6 (stricter static checks)
 
     return UserResponse(
         id=user_id,
@@ -292,6 +297,7 @@ async def get_me():
     )
 
 
+<<<<<<< HEAD
 @app.get("/users/profile")
 async def get_user_profile(email: str):
     """Get user profile by email from database"""
@@ -329,6 +335,8 @@ async def get_user_profile(email: str):
     raise HTTPException(status_code=404, detail="User profile not found")
 
 
+=======
+>>>>>>> e9d60e6 (stricter static checks)
 @app.get("/spaces", response_model=list[ParkingSpaceResponse])
 async def get_spaces(limit: Annotated[int, Query(ge=1, le=10000)] = 100):
     places = db.get_published_places(limit=limit)
@@ -636,6 +644,11 @@ async def create_booking(booking: Booking):
     hours = (booking.end_time - booking.start_time).total_seconds() / 3600
     total_price = hours * 10.0  # TODO: Get price from database
 
+<<<<<<< HEAD
+=======
+    created_at = datetime.now().replace(microsecond=0).isoformat() + "Z"
+
+>>>>>>> e9d60e6 (stricter static checks)
     booking_data: BookingData = {
         "id": booking_id,
         "space_id": booking.space_id,
@@ -644,12 +657,13 @@ async def create_booking(booking: Booking):
         "end_time": booking.end_time,
         "total_price": total_price,
         "status": "confirmed",
-        "created_at": datetime.now().replace(microsecond=0).isoformat() + "Z",
+        "created_at": created_at,
     }
 
     bookings_db[str(booking_id)] = booking_data
 
     return BookingResponse(
+<<<<<<< HEAD
         id=booking_data["id"],
         space_id=booking_data["space_id"],
         renter_id=booking_data["renter_id"],
@@ -658,6 +672,16 @@ async def create_booking(booking: Booking):
         total_price=booking_data["total_price"],
         status=booking_data["status"],
         created_at=booking_data["created_at"],
+=======
+        id=booking_id,
+        space_id=booking.space_id,
+        renter_id=current_user["id"],
+        start_time=booking.start_time,
+        end_time=booking.end_time,
+        total_price=total_price,
+        status="confirmed",
+        created_at=created_at,
+>>>>>>> e9d60e6 (stricter static checks)
     )
 
 
