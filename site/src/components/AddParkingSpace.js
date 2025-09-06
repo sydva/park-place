@@ -53,7 +53,8 @@ const LocationMarker = ({ position, setPosition }) => {
 };
 
 const AddParkingSpace = () => {
-  const [position, setPosition] = useState([37.7749, -122.4194]); // Default to SF
+  const [position, setPosition] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [pinPosition, setPinPosition] = useState(null);
   const [capturedImage, setCapturedImage] = useState(null);
   const [description, setDescription] = useState('');
@@ -64,9 +65,22 @@ const AddParkingSpace = () => {
   // Get user's location on component mount
   React.useEffect(() => {
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((pos) => {
-        setPosition([pos.coords.latitude, pos.coords.longitude]);
-      });
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setPosition([pos.coords.latitude, pos.coords.longitude]);
+          setLoading(false);
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          // Fallback to SF if geolocation fails
+          setPosition([37.7749, -122.4194]);
+          setLoading(false);
+        }
+      );
+    } else {
+      // Fallback to SF if geolocation not supported
+      setPosition([37.7749, -122.4194]);
+      setLoading(false);
     }
   }, []);
 
@@ -104,6 +118,20 @@ const AddParkingSpace = () => {
   const goBack = () => {
     navigate('/map');
   };
+
+  if (loading || !position) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        fontSize: '18px'
+      }}>
+        Getting your location...
+      </div>
+    );
+  }
 
   return (
     <div className="add-parking-container">

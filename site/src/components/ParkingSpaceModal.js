@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import StarRating from './StarRating';
 import { getTagDisplay } from '../data/parkingTags';
+import Icon from './Icon';
 import './ParkingSpaceModal.css';
 
 const ParkingSpaceModal = ({ space, onClose, userLocation }) => {
@@ -116,11 +117,15 @@ const ParkingSpaceModal = ({ space, onClose, userLocation }) => {
               <div className="info-row">
                 <span className="label">Features:</span>
                 <div className="tags">
-                  {space.features.map((tag, index) => (
-                    <span key={index} className="tag">
-                      {getTagDisplay(tag)}
-                    </span>
-                  ))}
+                  {space.features.map((tag, index) => {
+                    const tagInfo = getTagDisplay(tag);
+                    return (
+                      <span key={index} className="tag">
+                        <Icon name={tagInfo.icon} size={14} className="tag-icon" />
+                        <span className="tag-label">{tagInfo.label}</span>
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
             )}

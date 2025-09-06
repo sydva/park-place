@@ -4,28 +4,28 @@ export const PARKING_TAGS = {
   covered: {
     id: 'covered',
     label: 'Covered',
-    icon: '🏠',
+    icon: 'covered',
     category: 'location',
     description: 'Protected from weather'
   },
   ground_level: {
     id: 'ground_level',
     label: 'Ground Level',
-    icon: '🏢',
+    icon: 'ground_level',
     category: 'location',
     description: 'No stairs or elevators needed'
   },
   underground: {
     id: 'underground',
     label: 'Underground',
-    icon: '🚇',
+    icon: 'underground',
     category: 'location',
     description: 'Below ground level'
   },
   rooftop: {
     id: 'rooftop',
     label: 'Rooftop',
-    icon: '🏙️',
+    icon: 'rooftop',
     category: 'location',
     description: 'Top floor parking'
   },
@@ -34,28 +34,28 @@ export const PARKING_TAGS = {
   security: {
     id: 'security',
     label: 'Security',
-    icon: '🔒',
+    icon: 'security',
     category: 'security',
     description: 'Monitored or gated parking'
   },
   gated: {
     id: 'gated',
     label: 'Gated',
-    icon: '🚪',
+    icon: 'gated',
     category: 'security',
     description: 'Access controlled entry'
   },
   camera_monitored: {
     id: 'camera_monitored',
     label: 'Camera Monitored',
-    icon: '📹',
+    icon: 'camera_monitored',
     category: 'security',
     description: 'CCTV surveillance'
   },
   attended: {
     id: 'attended',
     label: 'Attended',
-    icon: '👮',
+    icon: 'attended',
     category: 'security',
     description: 'Staff on site'
   },
@@ -64,28 +64,28 @@ export const PARKING_TAGS = {
   ev_charging: {
     id: 'ev_charging',
     label: 'EV Charging',
-    icon: '⚡',
+    icon: 'ev_charging',
     category: 'amenities',
     description: 'Electric vehicle charging station'
   },
   valet: {
     id: 'valet',
     label: 'Valet',
-    icon: '🔑',
+    icon: 'valet',
     category: 'amenities',
     description: 'Valet parking service'
   },
   car_wash: {
     id: 'car_wash',
     label: 'Car Wash',
-    icon: '🚿',
+    icon: 'car_wash',
     category: 'amenities',
     description: 'Car wash available'
   },
   restrooms: {
     id: 'restrooms',
     label: 'Restrooms',
-    icon: '🚻',
+    icon: 'restrooms',
     category: 'amenities',
     description: 'Bathroom facilities nearby'
   },
@@ -94,14 +94,14 @@ export const PARKING_TAGS = {
   accessible: {
     id: 'accessible',
     label: 'Accessible',
-    icon: '♿',
+    icon: 'accessible',
     category: 'accessibility',
     description: 'ADA compliant parking'
   },
   wide_spaces: {
     id: 'wide_spaces',
     label: 'Wide Spaces',
-    icon: '↔️',
+    icon: 'wide_spaces',
     category: 'accessibility',
     description: 'Extra wide parking spaces'
   },
@@ -110,21 +110,21 @@ export const PARKING_TAGS = {
   compact_only: {
     id: 'compact_only',
     label: 'Compact Only',
-    icon: '🚗',
+    icon: 'compact_only',
     category: 'vehicle_type',
     description: 'Small cars only'
   },
   oversized_ok: {
     id: 'oversized_ok',
     label: 'Oversized OK',
-    icon: '🚛',
+    icon: 'oversized_ok',
     category: 'vehicle_type',
     description: 'Large vehicles welcome'
   },
   motorcycle: {
     id: 'motorcycle',
     label: 'Motorcycle',
-    icon: '🏍️',
+    icon: 'motorcycle',
     category: 'vehicle_type',
     description: 'Motorcycle parking'
   },
@@ -133,21 +133,21 @@ export const PARKING_TAGS = {
   well_lit: {
     id: 'well_lit',
     label: 'Well Lit',
-    icon: '💡',
+    icon: 'well_lit',
     category: 'features',
     description: 'Good lighting at night'
   },
   near_entrance: {
     id: 'near_entrance',
     label: 'Near Entrance',
-    icon: '🚪',
+    icon: 'near_entrance',
     category: 'features',
     description: 'Close to building entrance'
   },
   ventilated: {
     id: 'ventilated',
     label: 'Ventilated',
-    icon: '💨',
+    icon: 'ventilated',
     category: 'features',
     description: 'Good air circulation'
   }
@@ -191,7 +191,7 @@ export const getTagsByCategory = (category) =>
 // Get tag display info
 export const getTagDisplay = (tagId) => {
   const tag = PARKING_TAGS[tagId];
-  return tag ? `${tag.icon} ${tag.label}` : tagId;
+  return tag ? { icon: tag.icon, label: tag.label } : { icon: null, label: tagId };
 };
 
 // Search tags by text

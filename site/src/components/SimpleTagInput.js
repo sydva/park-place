@@ -1,5 +1,6 @@
 import React from 'react';
 import { getAllTags, TAG_CATEGORIES } from '../data/parkingTags';
+import Icon from './Icon';
 import './SimpleTagInput.css';
 
 const SimpleTagInput = ({ selectedTags = [], onTagsChange, maxTags = 8 }) => {
@@ -51,7 +52,7 @@ const SimpleTagInput = ({ selectedTags = [], onTagsChange, maxTags = 8 }) => {
                   disabled={isDisabled}
                   title={tag.description}
                 >
-                  <span className="tag-icon">{tag.icon}</span>
+                  <Icon name={tag.icon} size={16} className="tag-icon" />
                   <span className="tag-label">{tag.label}</span>
                 </button>
               );

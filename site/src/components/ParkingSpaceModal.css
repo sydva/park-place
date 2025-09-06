@@ -137,6 +137,17 @@
   border-radius: 12px;
   font-size: 12px;
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tag .tag-icon {
+  flex-shrink: 0;
+}
+
+.tag .tag-label {
+  white-space: nowrap;
 }
 
 .rating-section {
