@@ -1,29 +1,26 @@
 from contextlib import asynccontextmanager
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import anyio
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
-import jwt as pyjwt
-from passlib.context import CryptContext
+
+from backend import database as db
 
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+# Temporary bookings storage until we add bookings table
+bookings_db = {}
+next_booking_id = 1
 
-SECRET_KEY = "your-secret-key-change-in-production"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
-fake_db = {
-    "users": {},
-    "spaces": {},
-    "bookings": {},
+# Temporary current user for development
+DEV_USER = {
+    "id": 1,
+    "email": "test@example.com",
+    "username": "testuser",
+    "user_type": "both",
 }
-next_id = {"user": 1, "space": 1, "booking": 1}
 
 
 class UserRegister(BaseModel):
@@ -40,11 +37,6 @@ class UserResponse(BaseModel):
     name: str
     user_type: str
     rating: float = 0.0
-
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
 
 
 class ParkingSpace(BaseModel):
@@ -97,35 +89,16 @@ class SearchQuery(BaseModel):
     max_price: Optional[float] = None
 
 
-def get_password_hash(password):
-    return pwd_context.hash(password)
-
-
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def create_access_token(data: dict):
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    return pyjwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
-
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    try:
-        payload = pyjwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: int = payload.get("sub")
-        if user_id is None or str(user_id) not in fake_db["users"]:
-            raise HTTPException(status_code=401, detail="Invalid authentication")
-        return fake_db["users"][str(user_id)]
-    except pyjwt.PyJWTError:
-        raise HTTPException(status_code=401, detail="Invalid authentication")
+def get_current_user():
+    """Temporary function to return dev user"""
+    return DEV_USER
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Starting up Park Place backend...")
+    db.init_database()
+    print("Database initialized")
     yield
     print("Shutting down...")
 
@@ -148,24 +121,18 @@ async def root():
 
 @app.post("/auth/register", response_model=UserResponse)
 async def register(user: UserRegister):
-    if any(u["email"] == user.email for u in fake_db["users"].values()):
-        raise HTTPException(status_code=400, detail="Email already registered")
-
-    user_id = next_id["user"]
-    next_id["user"] += 1
-
-    user_data = {
-        "id": user_id,
-        "email": user.email,
-        "password_hash": get_password_hash(user.password),
-        "name": user.name,
-        "user_type": user.user_type,
-        "car_license_plate": user.car_license_plate,
-        "rating": 0.0,
-        "created_at": datetime.utcnow(),
-    }
-
-    fake_db["users"][str(user_id)] = user_data
+    # Simplified registration for now
+    if user.user_type in ["renter", "both"]:
+        user_id = db.create_parker(
+            email=user.email,
+            username=user.name,
+            hashed_password="temp_hash",
+            license_plate=user.car_license_plate if user.car_license_plate else None,
+        )
+    else:
+        user_id = db.create_provider(
+            email=user.email, username=user.name, hashed_password="temp_hash"
+        )
 
     return UserResponse(
         id=user_id,
@@ -176,62 +143,75 @@ async def register(user: UserRegister):
     )
 
 
-@app.post("/auth/login", response_model=Token)
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = None
-    for u in fake_db["users"].values():
-        if u["email"] == form_data.username:
-            user = u
-            break
-
-    if not user or not verify_password(form_data.password, user["password_hash"]):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    access_token = create_access_token(data={"sub": user["id"]})
-    return {"access_token": access_token, "token_type": "bearer"}
+@app.post("/auth/login")
+async def login():
+    # Simplified login for now
+    return {"message": "Login temporarily disabled"}
 
 
 @app.get("/auth/me", response_model=UserResponse)
-async def get_me(current_user: dict = Depends(get_current_user)):
+async def get_me():
+    current_user = get_current_user()
     return UserResponse(
         id=current_user["id"],
         email=current_user["email"],
-        name=current_user["name"],
+        name=current_user.get("username", "testuser"),
         user_type=current_user["user_type"],
-        rating=current_user["rating"],
+        rating=0.0,
     )
 
 
 @app.get("/spaces", response_model=List[ParkingSpaceResponse])
 async def get_spaces(limit: int = 100):
-    spaces = list(fake_db["spaces"].values())[:limit]
-    return [ParkingSpaceResponse(**space) for space in spaces]
+    places = db.get_published_places(limit=limit)
+    return [
+        ParkingSpaceResponse(
+            id=place["id"],
+            owner_id=place["owned_by"] or place["added_by"],
+            title=place["title"],
+            description=place["description"],
+            lat=place["latitude"] or 0.0,
+            lng=place["longitude"] or 0.0,
+            price_per_hour=10.0,  # TODO: Add price field to database
+            tags=[],  # TODO: Add tags system
+            rating=0.0,
+            is_available=True,
+            image_url=None,
+            created_at=datetime.fromisoformat(place["created_at"]),
+        )
+        for place in places
+    ]
 
 
 @app.post("/spaces/search", response_model=List[ParkingSpaceResponse])
 async def search_spaces(query: SearchQuery):
-    # Simple distance filter (in production, use PostGIS)
-    def calculate_distance(lat1, lng1, lat2, lng2):
-        # Simplified distance calculation
-        import math
-
-        return (
-            math.sqrt((lat1 - lat2) ** 2 + (lng1 - lng2) ** 2) * 111
-        )  # rough km conversion
+    places = db.search_places_by_location(query.lat, query.lng, query.radius)
 
     results = []
-    for space in fake_db["spaces"].values():
-        distance = calculate_distance(query.lat, query.lng, space["lat"], space["lng"])
-        if distance <= query.radius:
-            if query.min_price and space["price_per_hour"] < query.min_price:
-                continue
-            if query.max_price and space["price_per_hour"] > query.max_price:
-                continue
-            results.append(ParkingSpaceResponse(**space))
+    for place in places:
+        price = 10.0  # TODO: Add price field to database
+
+        if query.min_price and price < query.min_price:
+            continue
+        if query.max_price and price > query.max_price:
+            continue
+
+        results.append(
+            ParkingSpaceResponse(
+                id=place["id"],
+                owner_id=place["owned_by"] or place["added_by"],
+                title=place["title"],
+                description=place["description"],
+                lat=place["latitude"] or 0.0,
+                lng=place["longitude"] or 0.0,
+                price_per_hour=price,
+                tags=[],
+                rating=0.0,
+                is_available=True,
+                image_url=None,
+                created_at=datetime.fromisoformat(place["created_at"]),
+            )
+        )
 
     return results
 
@@ -243,99 +223,161 @@ async def get_nearby_spaces(lat: float, lng: float, radius: float = 1.0):
 
 
 @app.post("/spaces", response_model=ParkingSpaceResponse)
-async def create_space(
-    space: ParkingSpace, current_user: dict = Depends(get_current_user)
-):
-    if current_user["user_type"] not in ["lister", "both"]:
-        raise HTTPException(status_code=403, detail="Only listers can add spaces")
+async def create_space(space: ParkingSpace):
+    current_user = get_current_user()
 
-    space_id = next_id["space"]
-    next_id["space"] += 1
+    place_id = db.create_place(
+        title=space.title,
+        description=space.description,
+        added_by=current_user["id"],
+        owned_by=current_user["id"]
+        if current_user["user_type"] == "provider"
+        else None,
+        latitude=space.lat,
+        longitude=space.lng,
+        address="",  # TODO: Add geocoding
+    )
 
-    space_data = {
-        "id": space_id,
-        "owner_id": current_user["id"],
-        **space.dict(),
-        "rating": 0.0,
-        "is_available": True,
-        "created_at": datetime.utcnow(),
-    }
+    place = db.get_place_by_id(place_id)
+    if not place:
+        raise HTTPException(status_code=500, detail="Failed to create space")
 
-    fake_db["spaces"][str(space_id)] = space_data
-
-    return ParkingSpaceResponse(**space_data)
+    return ParkingSpaceResponse(
+        id=place_id,
+        owner_id=current_user["id"],
+        title=space.title,
+        description=space.description,
+        lat=space.lat,
+        lng=space.lng,
+        price_per_hour=space.price_per_hour,
+        tags=space.tags,
+        rating=0.0,
+        is_available=True,
+        image_url=space.image_url,
+        created_at=datetime.fromisoformat(place["created_at"]),
+    )
 
 
 @app.get("/spaces/{space_id}", response_model=ParkingSpaceResponse)
 async def get_space(space_id: int):
-    space = fake_db["spaces"].get(str(space_id))
-    if not space:
+    place = db.get_place_by_id(space_id)
+    if not place:
         raise HTTPException(status_code=404, detail="Space not found")
-    return ParkingSpaceResponse(**space)
+
+    return ParkingSpaceResponse(
+        id=place["id"],
+        owner_id=place["owned_by"] or place["added_by"],
+        title=place["title"],
+        description=place["description"],
+        lat=place["latitude"] or 0.0,
+        lng=place["longitude"] or 0.0,
+        price_per_hour=10.0,  # TODO: Add price field
+        tags=[],
+        rating=0.0,
+        is_available=True,
+        image_url=None,
+        created_at=datetime.fromisoformat(place["created_at"]),
+    )
 
 
 @app.put("/spaces/{space_id}", response_model=ParkingSpaceResponse)
-async def update_space(
-    space_id: int, space: ParkingSpace, current_user: dict = Depends(get_current_user)
-):
-    existing_space = fake_db["spaces"].get(str(space_id))
-    if not existing_space:
+async def update_space(space_id: int, space: ParkingSpace):
+    current_user = get_current_user()
+    place = db.get_place_by_id(space_id)
+    if not place:
         raise HTTPException(status_code=404, detail="Space not found")
 
-    if existing_space["owner_id"] != current_user["id"]:
+    if (
+        place["owned_by"] != current_user["id"]
+        and place["added_by"] != current_user["id"]
+    ):
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    existing_space.update(space.dict())
-    return ParkingSpaceResponse(**existing_space)
+    db.update_place(
+        space_id,
+        title=space.title,
+        description=space.description,
+        latitude=space.lat,
+        longitude=space.lng,
+    )
+
+    updated_place = db.get_place_by_id(space_id)
+    if not updated_place:
+        raise HTTPException(status_code=404, detail="Space not found after update")
+
+    return ParkingSpaceResponse(
+        id=updated_place["id"],
+        owner_id=updated_place["owned_by"] or updated_place["added_by"],
+        title=updated_place["title"],
+        description=updated_place["description"],
+        lat=updated_place["latitude"] or 0.0,
+        lng=updated_place["longitude"] or 0.0,
+        price_per_hour=space.price_per_hour,
+        tags=space.tags,
+        rating=0.0,
+        is_available=True,
+        image_url=space.image_url,
+        created_at=datetime.fromisoformat(updated_place["created_at"]),
+    )
 
 
 @app.delete("/spaces/{space_id}")
-async def delete_space(space_id: int, current_user: dict = Depends(get_current_user)):
-    space = fake_db["spaces"].get(str(space_id))
-    if not space:
+async def delete_space(space_id: int):
+    current_user = get_current_user()
+    place = db.get_place_by_id(space_id)
+    if not place:
         raise HTTPException(status_code=404, detail="Space not found")
 
-    if space["owner_id"] != current_user["id"]:
+    if (
+        place["owned_by"] != current_user["id"]
+        and place["added_by"] != current_user["id"]
+    ):
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    del fake_db["spaces"][str(space_id)]
+    db.delete_place(space_id)
     return {"message": "Space deleted"}
 
 
 @app.post("/spaces/{space_id}/upload-image")
-async def upload_image(space_id: int, current_user: dict = Depends(get_current_user)):
-    space = fake_db["spaces"].get(str(space_id))
-    if not space:
+async def upload_image(space_id: int):
+    current_user = get_current_user()
+    place = db.get_place_by_id(space_id)
+    if not place:
         raise HTTPException(status_code=404, detail="Space not found")
 
-    if space["owner_id"] != current_user["id"]:
+    if (
+        place["owned_by"] != current_user["id"]
+        and place["added_by"] != current_user["id"]
+    ):
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    # In production, handle actual file upload to S3/storage
-    space["image_url"] = f"https://placeholder.com/parking/{space_id}.jpg"
-    return {"image_url": space["image_url"]}
+    # TODO: Handle actual file upload
+    image_url = f"https://placeholder.com/parking/{space_id}.jpg"
+    return {"image_url": image_url}
 
 
 @app.get("/bookings/my-bookings", response_model=List[BookingResponse])
-async def get_my_bookings(current_user: dict = Depends(get_current_user)):
+async def get_my_bookings():
+    current_user = get_current_user()
     user_bookings = [
         BookingResponse(**booking)
-        for booking in fake_db["bookings"].values()
+        for booking in bookings_db.values()
         if booking["renter_id"] == current_user["id"]
     ]
     return user_bookings
 
 
 @app.post("/bookings", response_model=BookingResponse)
-async def create_booking(
-    booking: Booking, current_user: dict = Depends(get_current_user)
-):
-    space = fake_db["spaces"].get(str(booking.space_id))
-    if not space:
+async def create_booking(booking: Booking):
+    global next_booking_id
+    current_user = get_current_user()
+
+    place = db.get_place_by_id(booking.space_id)
+    if not place:
         raise HTTPException(status_code=404, detail="Space not found")
 
     # Check availability (simplified)
-    for existing_booking in fake_db["bookings"].values():
+    for existing_booking in bookings_db.values():
         if existing_booking["space_id"] == booking.space_id:
             if not (
                 booking.end_time <= existing_booking["start_time"]
@@ -345,11 +387,11 @@ async def create_booking(
                     status_code=400, detail="Space not available for this time"
                 )
 
-    booking_id = next_id["booking"]
-    next_id["booking"] += 1
+    booking_id = next_booking_id
+    next_booking_id += 1
 
     hours = (booking.end_time - booking.start_time).total_seconds() / 3600
-    total_price = hours * space["price_per_hour"]
+    total_price = hours * 10.0  # TODO: Get price from database
 
     booking_data = {
         "id": booking_id,
@@ -362,16 +404,15 @@ async def create_booking(
         "created_at": datetime.utcnow(),
     }
 
-    fake_db["bookings"][str(booking_id)] = booking_data
+    bookings_db[str(booking_id)] = booking_data
 
     return BookingResponse(**booking_data)
 
 
 @app.put("/bookings/{booking_id}/cancel")
-async def cancel_booking(
-    booking_id: int, current_user: dict = Depends(get_current_user)
-):
-    booking = fake_db["bookings"].get(str(booking_id))
+async def cancel_booking(booking_id: int):
+    current_user = get_current_user()
+    booking = bookings_db.get(str(booking_id))
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
 
@@ -383,19 +424,21 @@ async def cancel_booking(
 
 
 @app.get("/bookings/space/{space_id}", response_model=List[BookingResponse])
-async def get_space_bookings(
-    space_id: int, current_user: dict = Depends(get_current_user)
-):
-    space = fake_db["spaces"].get(str(space_id))
-    if not space:
+async def get_space_bookings(space_id: int):
+    current_user = get_current_user()
+    place = db.get_place_by_id(space_id)
+    if not place:
         raise HTTPException(status_code=404, detail="Space not found")
 
-    if space["owner_id"] != current_user["id"]:
+    if (
+        place["owned_by"] != current_user["id"]
+        and place["added_by"] != current_user["id"]
+    ):
         raise HTTPException(status_code=403, detail="Not authorized")
 
     space_bookings = [
         BookingResponse(**booking)
-        for booking in fake_db["bookings"].values()
+        for booking in bookings_db.values()
         if booking["space_id"] == space_id
     ]
     return space_bookings

@@ -1,5 +1,7 @@
 # project-specific
 .venv/
+app.db
+*.db
 
 
 # Byte-compiled / optimized / DLL files

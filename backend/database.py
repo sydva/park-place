@@ -2,11 +2,10 @@ import sqlite3
 import os
 from contextlib import contextmanager
 from typing import List, Dict, Any, Optional
-import json
-from datetime import datetime
 
 # Database configuration
 DB_PATH = os.getenv("DB_PATH", "./app.db")
+
 
 def init_database():
     """Initialize database with required tables"""
@@ -24,7 +23,7 @@ def init_database():
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        
+
         conn.execute("""
             CREATE TABLE IF NOT EXISTS providers (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,21 +49,34 @@ def init_database():
                 is_published BOOLEAN DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (added_by) REFERENCES users (id),
-                FOREIGN KEY (owned_by) REFERENCES providers (id),
+                FOREIGN KEY (added_by) REFERENCES parkers (id),
+                FOREIGN KEY (owned_by) REFERENCES providers (id)
             )
         """)
-        
+
         # Create indexes for better performance
         conn.execute("CREATE INDEX IF NOT EXISTS idx_parkers_email ON parkers(email)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_parkers_username ON parkers(username)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_parkers_license_plate ON parkers(license_plate)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_providers_email ON providers(email)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_providers_username ON providers(username)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_places_latitude ON places(latitude)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_places_longitude ON places(longitude)")
-        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_parkers_username ON parkers(username)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_parkers_license_plate ON parkers(license_plate)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_providers_email ON providers(email)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_providers_username ON providers(username)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_places_latitude ON places(latitude)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_places_longitude ON places(longitude)"
+        )
+
         conn.commit()
+
 
 @contextmanager
 def get_db():
@@ -80,137 +92,222 @@ def get_db():
     finally:
         conn.close()
 
-# User CRUD operations
-def create_user(email: str, username: str, hashed_password: str) -> int:
-    """Create a new user and return the user ID"""
+
+# Parker CRUD operations
+def create_parker(
+    email: str,
+    username: str,
+    hashed_password: str,
+    license_plate_state: Optional[str] = None,
+    license_plate: Optional[str] = None,
+) -> int:
+    """Create a new parker and return the parker ID"""
     with get_db() as conn:
-        cursor = conn.execute("""
-            INSERT INTO users (email, username, hashed_password)
+        cursor = conn.execute(
+            """
+            INSERT INTO parkers (email, username, hashed_password, license_plate_state, license_plate)
+            VALUES (?, ?, ?, ?, ?)
+        """,
+            (email, username, hashed_password, license_plate_state, license_plate),
+        )
+        return cursor.lastrowid or 0
+
+
+def get_parker_by_email(email: str) -> Optional[Dict[str, Any]]:
+    """Get parker by email"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            SELECT * FROM parkers WHERE email = ?
+        """,
+            (email,),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def get_provider_by_email(email: str) -> Optional[Dict[str, Any]]:
+    """Get provider by email"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            SELECT * FROM providers WHERE email = ?
+        """,
+            (email,),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def get_parker_by_id(parker_id: int) -> Optional[Dict[str, Any]]:
+    """Get parker by ID"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            SELECT * FROM parkers WHERE id = ?
+        """,
+            (parker_id,),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def get_provider_by_id(provider_id: int) -> Optional[Dict[str, Any]]:
+    """Get provider by ID"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            SELECT * FROM providers WHERE id = ?
+        """,
+            (provider_id,),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def create_provider(email: str, username: str, hashed_password: str) -> int:
+    """Create a new provider and return the provider ID"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO providers (email, username, hashed_password)
             VALUES (?, ?, ?)
-        """, (email, username, hashed_password))
-        return cursor.lastrowid
+        """,
+            (email, username, hashed_password),
+        )
+        return cursor.lastrowid or 0
 
-def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
-    """Get user by email"""
+
+# Place CRUD operations
+def create_place(
+    title: str,
+    description: str,
+    added_by: int,
+    owned_by: Optional[int] = None,
+    latitude: Optional[float] = None,
+    longitude: Optional[float] = None,
+    address: Optional[str] = None,
+) -> int:
+    """Create a new place and return the place ID"""
     with get_db() as conn:
-        cursor = conn.execute("""
-            SELECT * FROM users WHERE email = ?
-        """, (email,))
+        cursor = conn.execute(
+            """
+            INSERT INTO places (title, description, added_by, owned_by, latitude, longitude, address)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+            (title, description, added_by, owned_by, latitude, longitude, address),
+        )
+        return cursor.lastrowid or 0
+
+
+def get_place_by_id(place_id: int) -> Optional[Dict[str, Any]]:
+    """Get place by ID"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            SELECT * FROM places WHERE id = ?
+        """,
+            (place_id,),
+        )
         row = cursor.fetchone()
         return dict(row) if row else None
 
-def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
-    """Get user by ID"""
-    with get_db() as conn:
-        cursor = conn.execute("""
-            SELECT * FROM users WHERE id = ?
-        """, (user_id,))
-        row = cursor.fetchone()
-        return dict(row) if row else None
 
-def get_users(skip: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
-    """Get multiple users with pagination"""
+def get_places_by_owner(
+    owner_id: int, skip: int = 0, limit: int = 100
+) -> List[Dict[str, Any]]:
+    """Get places by owner ID"""
     with get_db() as conn:
-        cursor = conn.execute("""
-            SELECT * FROM users 
+        cursor = conn.execute(
+            """
+            SELECT * FROM places 
+            WHERE owned_by = ? 
             ORDER BY created_at DESC 
             LIMIT ? OFFSET ?
-        """, (limit, skip))
+        """,
+            (owner_id, limit, skip),
+        )
         return [dict(row) for row in cursor.fetchall()]
 
-def update_user_active_status(user_id: int, is_active: bool) -> bool:
-    """Update user's active status"""
-    with get_db() as conn:
-        cursor = conn.execute("""
-            UPDATE users 
-            SET is_active = ?, updated_at = CURRENT_TIMESTAMP 
-            WHERE id = ?
-        """, (is_active, user_id))
-        return cursor.rowcount > 0
 
-def delete_user(user_id: int) -> bool:
-    """Delete a user"""
+def get_published_places(skip: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
+    """Get published places"""
     with get_db() as conn:
-        cursor = conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
-        return cursor.rowcount > 0
-
-# Post CRUD operations
-def create_post(title: str, content: str, user_id: int, is_published: bool = False) -> int:
-    """Create a new post and return the post ID"""
-    with get_db() as conn:
-        cursor = conn.execute("""
-            INSERT INTO posts (title, content, user_id, is_published)
-            VALUES (?, ?, ?, ?)
-        """, (title, content, user_id, is_published))
-        return cursor.lastrowid
-
-def get_post_by_id(post_id: int) -> Optional[Dict[str, Any]]:
-    """Get post by ID"""
-    with get_db() as conn:
-        cursor = conn.execute("""
-            SELECT * FROM posts WHERE id = ?
-        """, (post_id,))
-        row = cursor.fetchone()
-        return dict(row) if row else None
-
-def get_posts_by_user(user_id: int, skip: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
-    """Get posts by user ID"""
-    with get_db() as conn:
-        cursor = conn.execute("""
-            SELECT * FROM posts 
-            WHERE user_id = ? 
+        cursor = conn.execute(
+            """
+            SELECT * FROM places 
+            WHERE is_published = 1 
             ORDER BY created_at DESC 
             LIMIT ? OFFSET ?
-        """, (user_id, limit, skip))
+        """,
+            (limit, skip),
+        )
         return [dict(row) for row in cursor.fetchall()]
 
-def get_published_posts(skip: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
-    """Get published posts"""
+
+def search_places_by_location(
+    lat: float, lng: float, radius_km: float = 1.0
+) -> List[Dict[str, Any]]:
+    """Search places within radius of given coordinates"""
     with get_db() as conn:
-        cursor = conn.execute("""
-            SELECT p.*, u.username 
-            FROM posts p 
-            JOIN users u ON p.user_id = u.id 
-            WHERE p.is_published = 1 
-            ORDER BY p.created_at DESC 
-            LIMIT ? OFFSET ?
-        """, (limit, skip))
+        # Simple bounding box search (for MVP - in production use PostGIS)
+        lat_delta = radius_km / 111.0  # rough conversion
+        lng_delta = radius_km / (111.0 * abs(lat) if lat != 0 else 111.0)
+
+        cursor = conn.execute(
+            """
+            SELECT * FROM places 
+            WHERE latitude BETWEEN ? AND ?
+            AND longitude BETWEEN ? AND ?
+            AND is_published = 1
+        """,
+            (lat - lat_delta, lat + lat_delta, lng - lng_delta, lng + lng_delta),
+        )
         return [dict(row) for row in cursor.fetchall()]
 
-def update_post(post_id: int, title: str = None, content: str = None, is_published: bool = None) -> bool:
-    """Update a post"""
+
+def update_place(place_id: int, **kwargs) -> bool:
+    """Update a place"""
+    allowed_fields = [
+        "title",
+        "description",
+        "latitude",
+        "longitude",
+        "address",
+        "is_published",
+    ]
     updates = []
     params = []
-    
-    if title is not None:
-        updates.append("title = ?")
-        params.append(title)
-    if content is not None:
-        updates.append("content = ?")
-        params.append(content)
-    if is_published is not None:
-        updates.append("is_published = ?")
-        params.append(is_published)
-    
+
+    for field, value in kwargs.items():
+        if field in allowed_fields and value is not None:
+            updates.append(f"{field} = ?")
+            params.append(value)
+
     if not updates:
         return False
-    
+
     updates.append("updated_at = CURRENT_TIMESTAMP")
-    params.append(post_id)
-    
+    params.append(place_id)
+
     with get_db() as conn:
-        cursor = conn.execute(f"""
-            UPDATE posts 
-            SET {', '.join(updates)}
+        cursor = conn.execute(
+            f"""
+            UPDATE places 
+            SET {", ".join(updates)}
             WHERE id = ?
-        """, params)
+        """,
+            params,
+        )
         return cursor.rowcount > 0
 
-def delete_post(post_id: int) -> bool:
-    """Delete a post"""
+
+def delete_place(place_id: int) -> bool:
+    """Delete a place"""
     with get_db() as conn:
-        cursor = conn.execute("DELETE FROM posts WHERE id = ?", (post_id,))
+        cursor = conn.execute("DELETE FROM places WHERE id = ?", (place_id,))
         return cursor.rowcount > 0
+
 
 # Utility functions
 def check_database_health() -> bool:
@@ -222,15 +319,23 @@ def check_database_health() -> bool:
     except Exception:
         return False
 
-def get_user_count() -> int:
-    """Get total number of users"""
+
+def get_parker_count() -> int:
+    """Get total number of parkers"""
     with get_db() as conn:
-        cursor = conn.execute("SELECT COUNT(*) FROM users")
+        cursor = conn.execute("SELECT COUNT(*) FROM parkers")
         return cursor.fetchone()[0]
 
-def get_post_count() -> int:
-    """Get total number of posts"""
+
+def get_provider_count() -> int:
+    """Get total number of providers"""
     with get_db() as conn:
-        cursor = conn.execute("SELECT COUNT(*) FROM posts")
+        cursor = conn.execute("SELECT COUNT(*) FROM providers")
         return cursor.fetchone()[0]
 
+
+def get_place_count() -> int:
+    """Get total number of places"""
+    with get_db() as conn:
+        cursor = conn.execute("SELECT COUNT(*) FROM places")
+        return cursor.fetchone()[0]
