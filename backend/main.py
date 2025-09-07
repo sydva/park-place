@@ -408,8 +408,14 @@ async def get_spaces(limit: Annotated[int, Query(ge=1, le=10000)] = 100):
 
 
 @app.post("/spaces/search", response_model=list[ParkingSpaceResponse])
-async def search_spaces(query: SearchQuery):
-    places = db.search_places_by_location(query.lat, query.lng, query.radius)
+async def search_spaces(query: SearchQuery, user_email: str | None = None):
+    # Check if user is verified
+    user_is_verified = False
+    if user_email:
+        user = db.get_user_by_email(user_email)
+        user_is_verified = user.get("is_verified", False) if user else False
+    
+    places = db.search_places_by_location(query.lat, query.lng, query.radius, user_is_verified)
 
     results: list[ParkingSpaceResponse] = []
     for place in places:
@@ -448,9 +454,20 @@ async def get_nearby_spaces(
     lat: Annotated[float, Query(ge=-90, le=90)],
     lng: Annotated[float, Query(ge=-180, le=180)],
     radius: Annotated[float, Query(gt=0, le=1000)] = 1.0,
+    user_email: str | None = None,
 ):
     query = SearchQuery(lat=lat, lng=lng, radius=radius)
-    return await search_spaces(query)
+    return await search_spaces(query, user_email)
+
+
+@app.get("/spaces/count")
+async def get_spaces_count(
+    lat: Annotated[float, Query(ge=-90, le=90)],
+    lng: Annotated[float, Query(ge=-180, le=180)],
+    radius: Annotated[float, Query(gt=0, le=1000)] = 1.0,
+):
+    """Get count of spaces by verification requirement"""
+    return db.get_spaces_count_by_verification(lat, lng, radius)
 
 
 @app.post("/spaces", response_model=ParkingSpaceResponse)

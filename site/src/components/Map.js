@@ -76,6 +76,7 @@ const Map = () => {
   // User verification status from Clerk
   const { user: clerkUser, isLoaded: isUserLoaded } = useUser();
   const [isUserVerified, setIsUserVerified] = useState(false);
+  const [spaceCounts, setSpaceCounts] = useState({ total_spaces: 0, verified_only_spaces: 0, public_spaces: 0 });
   const [filters, setFilters] = useState({
     tags: [],
     priceRange: [0, 20],
@@ -102,13 +103,28 @@ const Map = () => {
             
             // Load parking spaces from backend
             try {
-              // Set user verification status (for now, all Clerk users are verified)
-              setIsUserVerified(true);
+              // Get user verification status
+              let userVerified = false;
+              let userEmail = null;
+              if (clerkUser?.primaryEmailAddress?.emailAddress) {
+                userEmail = clerkUser.primaryEmailAddress.emailAddress;
+                try {
+                  const profile = await apiService.getUserProfileByEmail(userEmail);
+                  userVerified = profile?.is_verified || false;
+                } catch (profileError) {
+                  console.log('Could not fetch user verification status:', profileError);
+                }
+              }
+              setIsUserVerified(userVerified);
               
-              // Load parking spaces 
-              const spaces = await apiService.getNearbySpaces(userPos[0], userPos[1], 5.0);
+              // Load parking spaces with user context
+              const spaces = await apiService.getNearbySpaces(userPos[0], userPos[1], 5.0, userEmail);
               setParkingSpaces(spaces);
               setFilteredSpaces(spaces);
+
+              // Get space counts for verification display
+              const counts = await apiService.getSpacesCount(userPos[0], userPos[1], 5.0);
+              setSpaceCounts(counts);
               setVisibleSpaces(filterSpacesByZoom(spaces, 16));
             } catch (apiError) {
               console.error('Failed to load parking spaces from API:', apiError);
@@ -195,8 +211,18 @@ const Map = () => {
     
     // Load new parking spaces around the searched location
     try {
-      const newSpaces = await apiService.getNearbySpaces(location.lat, location.lng, 5.0);
+      let userEmail = null;
+      if (clerkUser?.primaryEmailAddress?.emailAddress) {
+        userEmail = clerkUser.primaryEmailAddress.emailAddress;
+      }
+      
+      const newSpaces = await apiService.getNearbySpaces(location.lat, location.lng, 5.0, userEmail);
       setParkingSpaces(newSpaces);
+      
+      // Get space counts for new location
+      const counts = await apiService.getSpacesCount(location.lat, location.lng, 5.0);
+      setSpaceCounts(counts);
+      
       // Apply current filters to new spaces
       applyFilters(filters, newSpaces);
     } catch (error) {
@@ -278,6 +304,48 @@ const Map = () => {
         onAmenityFilter={handleAmenityFilter}
         onFilterClick={() => setShowFilterModal(true)}
       />
+      
+      {/* Verification Status Display */}
+      {!isUserVerified && spaceCounts && spaceCounts.verified_only_spaces > 0 && (
+        <div style={{
+          position: 'absolute',
+          top: '60px',
+          left: '20px',
+          right: '20px',
+          zIndex: 1000,
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          padding: '12px 16px',
+          borderRadius: '8px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          fontSize: '14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div>
+            ✨ <strong>{spaceCounts.verified_only_spaces} additional verified spaces</strong> available in this area
+          </div>
+          <button 
+            style={{
+              background: 'rgba(255,255,255,0.2)',
+              border: '1px solid rgba(255,255,255,0.3)',
+              color: 'white',
+              padding: '6px 12px',
+              borderRadius: '4px',
+              fontSize: '12px',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
+            onClick={() => {
+              // TODO: Navigate to verification flow
+              console.log('Navigate to verification');
+            }}
+          >
+            Get Verified
+          </button>
+        </div>
+      )}
       
       {/* Main Map Container */}
       <div className={`map-wrapper ${listVisible ? 'with-sidebar' : 'sidebar-hidden'}`}>

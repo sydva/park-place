@@ -45,11 +45,14 @@ class ApiService {
     }
   }
 
-  async getNearbySpaces(lat, lng, radius = 1.0) {
+  async getNearbySpaces(lat, lng, radius = 1.0, userEmail = null) {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/spaces/nearby?lat=${lat}&lng=${lng}&radius=${radius}`
-      );
+      let url = `${API_BASE_URL}/spaces/nearby?lat=${lat}&lng=${lng}&radius=${radius}`;
+      if (userEmail) {
+        url += `&user_email=${encodeURIComponent(userEmail)}`;
+      }
+      
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -57,6 +60,21 @@ class ApiService {
       return this.transformApiSpacesToFrontend(spaces);
     } catch (error) {
       console.error('Error fetching nearby spaces:', error);
+      throw error;
+    }
+  }
+
+  async getSpacesCount(lat, lng, radius = 1.0) {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/spaces/count?lat=${lat}&lng=${lng}&radius=${radius}`
+      );
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching spaces count:', error);
       throw error;
     }
   }

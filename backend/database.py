@@ -168,6 +168,22 @@ def init_database():
                 "ALTER TABLE users ADD COLUMN units_preference TEXT DEFAULT 'imperial' CHECK(units_preference IN ('metric', 'imperial'))"
             )
 
+        # Add verified_only column to places table if it doesn't exist
+        cursor.execute("PRAGMA table_info(places)")
+        places_columns = [column[1] for column in cursor.fetchall()]
+        if "verified_only" not in places_columns:
+            conn.execute(
+                "ALTER TABLE places ADD COLUMN verified_only BOOLEAN DEFAULT 0"
+            )
+
+        # Add is_verified column to users table if it doesn't exist
+        cursor.execute("PRAGMA table_info(users)")
+        users_columns = [column[1] for column in cursor.fetchall()]
+        if "is_verified" not in users_columns:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT 0"
+            )
+
         conn.commit()
 
 
@@ -194,16 +210,17 @@ def create_user(
     user_type: str = "parker",
     license_plate_state: str | None = None,
     license_plate: str | None = None,
+    is_verified: bool = False,
 ) -> int:
     """Create a new user and return the user ID"""
     with get_db() as conn:
         cursor = conn.execute(
             """
             INSERT INTO users (email, username, hashed_password, user_type,
-                license_plate_state, license_plate)
-            VALUES (?, ?, ?, ?, ?, ?)
+                license_plate_state, license_plate, is_verified)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-            (email, username, hashed_password, user_type, license_plate_state, license_plate),
+            (email, username, hashed_password, user_type, license_plate_state, license_plate, is_verified),
         )
         return cursor.lastrowid or 0
 
@@ -312,6 +329,7 @@ def create_place(
     address: str | None = None,
     price_per_hour: float = 0.0,
     tags: list[str] | None = None,
+    verified_only: bool = False,
 ) -> int:
     """Create a new place and return the place ID"""
     import json
@@ -321,10 +339,10 @@ def create_place(
         cursor = conn.execute(
             """
             INSERT INTO places (title, description, added_by, creator_is_owner,
-                latitude, longitude, address, price_per_hour, tags)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                latitude, longitude, address, price_per_hour, tags, verified_only)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-            (title, description, added_by, creator_is_owner, latitude, longitude, address, price_per_hour, tags_json),
+            (title, description, added_by, creator_is_owner, latitude, longitude, address, price_per_hour, tags_json, verified_only),
         )
         return cursor.lastrowid or 0
 
@@ -444,7 +462,7 @@ def get_published_places(skip: int = 0, limit: int = 100) -> list[dict[str, Any]
 
 
 def search_places_by_location(
-    lat: float, lng: float, radius_km: float = 1.0
+    lat: float, lng: float, radius_km: float = 1.0, user_is_verified: bool = False
 ) -> list[dict[str, Any]]:
     """Search places within radius of given coordinates with rating statistics"""
     with get_db() as conn:
@@ -456,8 +474,11 @@ def search_places_by_location(
 
         lng_delta = radius_km / (111.0 * math.cos(math.radians(lat)))
 
+        # If user is not verified, filter out verified-only spaces
+        verification_filter = "" if user_is_verified else "AND (p.verified_only = 0 OR p.verified_only IS NULL)"
+
         cursor = conn.execute(
-            """
+            f"""
             SELECT p.*, 
                    COALESCE(AVG(pr.rating), 0) as average_rating,
                    COUNT(pr.rating) as rating_count
@@ -466,6 +487,7 @@ def search_places_by_location(
             WHERE p.latitude BETWEEN ? AND ?
             AND p.longitude BETWEEN ? AND ?
             AND p.is_published = 1
+            {verification_filter}
             GROUP BY p.id
         """,
             (lat - lat_delta, lat + lat_delta, lng - lng_delta, lng + lng_delta),
@@ -476,6 +498,43 @@ def search_places_by_location(
             result['average_rating'] = float(result['average_rating']) if result['rating_count'] > 0 else None
             results.append(_parse_place_tags(result))
         return results
+
+
+def get_spaces_count_by_verification(
+    lat: float, lng: float, radius_km: float = 1.0
+) -> dict[str, int]:
+    """Get count of spaces by verification requirement"""
+    with get_db() as conn:
+        # Simple bounding box search (for MVP - in production use PostGIS)
+        # 1 degree of latitude ≈ 111 km
+        lat_delta = radius_km / 111.0
+        # 1 degree of longitude varies by latitude
+        import math
+
+        lng_delta = radius_km / (111.0 * math.cos(math.radians(lat)))
+
+        cursor = conn.execute(
+            """
+            SELECT 
+                COUNT(*) as total_spaces,
+                SUM(CASE WHEN verified_only = 1 THEN 1 ELSE 0 END) as verified_only_spaces,
+                SUM(CASE WHEN verified_only = 0 OR verified_only IS NULL THEN 1 ELSE 0 END) as public_spaces
+            FROM places p
+            WHERE p.latitude BETWEEN ? AND ?
+            AND p.longitude BETWEEN ? AND ?
+            AND p.is_published = 1
+        """,
+            (lat - lat_delta, lat + lat_delta, lng - lng_delta, lng + lng_delta),
+        )
+        
+        row = cursor.fetchone()
+        if row:
+            return {
+                "total_spaces": int(row["total_spaces"]),
+                "verified_only_spaces": int(row["verified_only_spaces"]),
+                "public_spaces": int(row["public_spaces"])
+            }
+        return {"total_spaces": 0, "verified_only_spaces": 0, "public_spaces": 0}
 
 
 def update_place(place_id: int, **kwargs: Any) -> bool:
