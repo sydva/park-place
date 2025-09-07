@@ -127,7 +127,7 @@
 }
 
 .parking-space-item:hover {
-  background: #FFD700;
+  background: #FFFF99;
   border-left-color: #FFA500;
   transform: rotate(-0.2deg) translateX(2px);
   box-shadow: 3px 3px 0px #000;
@@ -300,7 +300,7 @@
     transform: translateY(-50%) rotate(-90deg);
     z-index: 1001;
   }
-  
+
   .parking-space-list.hidden .toggle-list-btn {
     right: -44px; /* Keep toggle reachable while panel is fully hidden */
     background: white;

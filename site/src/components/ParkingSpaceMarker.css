@@ -1,20 +1,38 @@
 .parking-space-marker {
-  transition: transform 0.2s ease;
+  transition: all 0.1s ease;
   cursor: pointer;
+  transform: rotate(-3deg);
+  filter: drop-shadow(2px 2px 0px #000);
 }
 
 .parking-space-marker:hover {
-  transform: scale(1.1);
+  transform: rotate(-3deg) scale(1.15) translateY(-2px);
   z-index: 1000 !important;
+  filter: drop-shadow(4px 4px 0px #000);
 }
 
 .parking-price-marker {
-  transition: all 0.2s ease;
+  transition: all 0.1s ease;
   cursor: pointer;
   z-index: 500;
+  transform: rotate(-1deg);
+  filter: drop-shadow(3px 3px 0px #000);
 }
 
 .parking-price-marker:hover {
-  transform: scale(1.05);
+  transform: rotate(-1deg) scale(1.1) translateY(-3px);
+  z-index: 1000 !important;
+  filter: drop-shadow(5px 5px 0px #000);
+}
+
+/* User location marker styling */
+.user-location-marker {
+  transition: all 0.1s ease;
+  cursor: pointer;
+  transform: rotate(-2deg);
+}
+
+.user-location-marker:hover {
+  transform: rotate(-2deg) scale(1.1) translateY(-2px);
   z-index: 1000 !important;
 }

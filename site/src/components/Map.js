@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
 import { useUser } from '@clerk/clerk-react';
-import UserMenu from './UserMenu';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { useEffect, useState } from 'react';
+import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet';
+import { filterSpacesByZoom } from '../data/parkingSpaces';
+import apiService from '../services/api';
+import FilterModal from './FilterModal';
+import './MapLayout.css';
+import ParkingSpaceList from './ParkingSpaceList';
 import ParkingSpaceMarker from './ParkingSpaceMarker';
 import ParkingSpaceModal from './ParkingSpaceModal';
 import SearchBar from './SearchBar';
-import ParkingSpaceList from './ParkingSpaceList';
-import FilterModal from './FilterModal';
-import { filterSpacesByZoom } from '../data/parkingSpaces';
-import apiService from '../services/api';
-import './MapLayout.css';
+import UserMenu from './UserMenu';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -72,7 +72,7 @@ const Map = () => {
   const [listVisible, setListVisible] = useState(true);
   const [mapCenter, setMapCenter] = useState(null);
   const [searchLocation, setSearchLocation] = useState(null);
-  
+
   // User verification status from Clerk
   const { user: clerkUser, isLoaded: isUserLoaded } = useUser();
   const [isUserVerified, setIsUserVerified] = useState(false);
@@ -100,7 +100,7 @@ const Map = () => {
             const userPos = [position.coords.latitude, position.coords.longitude];
             setPosition(userPos);
             setMapCenter(userPos);
-            
+
             // Load parking spaces from backend
             try {
               // Get user verification status
@@ -116,7 +116,7 @@ const Map = () => {
                 }
               }
               setIsUserVerified(userVerified);
-              
+
               // Load parking spaces with user context
               const spaces = await apiService.getNearbySpaces(userPos[0], userPos[1], 5.0, userEmail);
               setParkingSpaces(spaces);
@@ -135,7 +135,7 @@ const Map = () => {
               setFilteredSpaces(fallbackSpaces);
               setVisibleSpaces(filterSpacesByZoom(fallbackSpaces, 16));
             }
-            
+
             setLoading(false);
           },
           (error) => {
@@ -159,10 +159,10 @@ const Map = () => {
 
   if (loading) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
         height: '100vh',
         fontSize: '18px'
       }}>
@@ -173,10 +173,10 @@ const Map = () => {
 
   if (error) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
         height: '100vh',
         fontSize: '18px',
         color: 'red'
@@ -204,25 +204,25 @@ const Map = () => {
   const handleLocationSearch = async (location) => {
     console.log('Navigating to location:', location);
     const newCenter = [location.lat, location.lng];
-    
+
     // Update map center and search location marker
     setMapCenter(newCenter);
     setSearchLocation(location);
-    
+
     // Load new parking spaces around the searched location
     try {
       let userEmail = null;
       if (clerkUser?.primaryEmailAddress?.emailAddress) {
         userEmail = clerkUser.primaryEmailAddress.emailAddress;
       }
-      
+
       const newSpaces = await apiService.getNearbySpaces(location.lat, location.lng, 5.0, userEmail);
       setParkingSpaces(newSpaces);
-      
+
       // Get space counts for new location
       const counts = await apiService.getSpacesCount(location.lat, location.lng, 5.0);
       setSpaceCounts(counts);
-      
+
       // Apply current filters to new spaces
       applyFilters(filters, newSpaces);
     } catch (error) {
@@ -264,8 +264,8 @@ const Map = () => {
     }
 
     // Filter by price range
-    filtered = filtered.filter(space => 
-      space.price >= currentFilters.priceRange[0] && 
+    filtered = filtered.filter(space =>
+      space.price >= currentFilters.priceRange[0] &&
       space.price <= currentFilters.priceRange[1]
     );
 
@@ -276,7 +276,7 @@ const Map = () => {
 
     // Filter by tags
     if (currentFilters.tags.length > 0) {
-      filtered = filtered.filter(space => 
+      filtered = filtered.filter(space =>
         currentFilters.tags.some(tag => space.features.includes(tag))
       );
     }
@@ -287,7 +287,7 @@ const Map = () => {
     }
 
     setFilteredSpaces(filtered);
-    
+
     // Update visible spaces with zoom filtering applied to filtered results
     const zoomFiltered = filterSpacesByZoom(filtered, currentZoom);
     setVisibleSpaces(zoomFiltered);
@@ -297,21 +297,21 @@ const Map = () => {
   return (
     <div className="map-container-with-search">
       <UserMenu />
-      
+
       {/* Search Bar */}
-      <SearchBar 
+      <SearchBar
         onLocationSearch={handleLocationSearch}
         onAmenityFilter={handleAmenityFilter}
         onFilterClick={() => setShowFilterModal(true)}
       />
-      
+
       {/* Main Map Container */}
       <div className={`map-wrapper ${listVisible ? 'with-sidebar' : 'sidebar-hidden'}`}>
-        <MapContainer 
-          center={mapCenter || position} 
-          zoom={16} 
-          style={{ 
-            height: '100%', 
+        <MapContainer
+          center={mapCenter || position}
+          zoom={16}
+          style={{
+            height: '100%',
             width: '100%'
           }}
           zoomControl={false}
@@ -324,21 +324,38 @@ const Map = () => {
           subdomains="abcd"
           maxZoom={20}
         />
-        <MapEventHandler 
-          onZoomChange={handleZoomChange} 
+        <MapEventHandler
+          onZoomChange={handleZoomChange}
           onMoveChange={handleMoveChange}
         />
         {/* Ensure map resizes after sidebar visibility changes */}
         <ResizeHandler listVisible={listVisible} />
         {/* User location marker */}
         {position && (
-          <Marker position={position}>
+          <Marker
+            position={position}
+            icon={L.divIcon({
+              html: `
+                <svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 35 35">
+                  <!-- Main circle -->
+                  <circle cx="17.5" cy="17.5" r="15" fill="#2196F3" stroke="#000" stroke-width="4"/>
+                  <!-- Inner circle -->
+                  <circle cx="17.5" cy="17.5" r="7" fill="#FFF" stroke="#000" stroke-width="2"/>
+                  <!-- Center dot -->
+                  <circle cx="17.5" cy="17.5" r="3" fill="#000"/>
+                </svg>
+              `,
+              className: 'user-location-marker',
+              iconSize: [35, 35],
+              iconAnchor: [17.5, 17.5],
+            })}
+          >
           </Marker>
         )}
-        
+
         {/* Search location marker */}
         {searchLocation && (
-          <Marker 
+          <Marker
             position={[searchLocation.lat, searchLocation.lng]}
             icon={L.divIcon({
               html: `<div style="background: #ff6b6b; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">🔍</div>`,
@@ -353,7 +370,7 @@ const Map = () => {
         {visibleSpaces
           .filter(space => isUserVerified || !space.requiresVerification)
           .map((space) => (
-            <ParkingSpaceMarker 
+            <ParkingSpaceMarker
               key={space.id}
               space={space}
               showPrice={currentZoom > 17}
@@ -362,7 +379,7 @@ const Map = () => {
           ))}
         </MapContainer>
       </div>
-      
+
       {/* Parking Space List */}
       <ParkingSpaceList
         spaces={parkingSpaces}
@@ -374,7 +391,7 @@ const Map = () => {
         isUserVerified={isUserVerified}
         spaceCounts={spaceCounts}
       />
-      
+
       {/* Filter Modal */}
       <FilterModal
         isOpen={showFilterModal}
@@ -382,7 +399,7 @@ const Map = () => {
         filters={filters}
         onFiltersChange={handleFiltersChange}
       />
-      
+
       {/* Parking Space Modal */}
       {selectedSpace && (
         <ParkingSpaceModal
