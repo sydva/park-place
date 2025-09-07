@@ -270,8 +270,8 @@ def update_user(
 ) -> bool:
     """Update user profile by email"""
     # Build the SET clause dynamically based on provided parameters
-    updates = []
-    params = []
+    updates: list[str] = []
+    params: list[Any] = []
 
     if username is not None:
         updates.append("username = ?")
@@ -394,7 +394,7 @@ def get_places_by_creator(creator_id: int, skip: int = 0, limit: int = 100) -> l
         """,
             (creator_id, limit, skip),
         )
-        results = []
+        results: list[dict[str, Any]] = []
         for row in cursor.fetchall():
             result = dict(row)
             result["average_rating"] = float(result["average_rating"]) if result["rating_count"] > 0 else None
@@ -419,7 +419,7 @@ def get_places_by_owner(owner_id: int, skip: int = 0, limit: int = 100) -> list[
         """,
             (owner_id, limit, skip),
         )
-        results = []
+        results: list[dict[str, Any]] = []
         for row in cursor.fetchall():
             result = dict(row)
             result["average_rating"] = float(result["average_rating"]) if result["rating_count"] > 0 else None
@@ -444,7 +444,7 @@ def get_published_places(skip: int = 0, limit: int = 100) -> list[dict[str, Any]
         """,
             (limit, skip),
         )
-        results = []
+        results: list[dict[str, Any]] = []
         for row in cursor.fetchall():
             result = dict(row)
             result["average_rating"] = float(result["average_rating"]) if result["rating_count"] > 0 else None
@@ -477,7 +477,7 @@ def search_places_by_location(lat: float, lng: float, radius_km: float = 1.0) ->
         """,
             (lat - lat_delta, lat + lat_delta, lng - lng_delta, lng + lng_delta),
         )
-        results = []
+        results: list[dict[str, Any]] = []
         for row in cursor.fetchall():
             result = dict(row)
             result["average_rating"] = float(result["average_rating"]) if result["rating_count"] > 0 else None

@@ -4,11 +4,35 @@ Script to populate the database with diverse test parking spaces, users, and rev
 """
 
 import random
+from typing import TypedDict
 
-from . import database as db
+from backend import database as db
+
+
+class UserData(TypedDict):
+    email: str
+    username: str
+    license_plate: str
+    user_type: str
+
+
+class ParkingSpaceData(TypedDict):
+    title: str
+    description: str
+    latitude: float
+    longitude: float
+    address: str
+    price_per_hour: float
+    tags: list[str]
+
+
+class ReviewData(TypedDict):
+    rating: int
+    description: str
+
 
 # Test user data - now using unified user system
-TEST_USERS = [
+TEST_USERS: list[UserData] = [
     {
         "email": "john@example.com",
         "username": "john_parker",
@@ -60,7 +84,7 @@ TEST_USERS = [
 ]
 
 # Diverse parking spaces with different amenities, prices, and types
-DIVERSE_PARKING_SPACES = [
+DIVERSE_PARKING_SPACES: list[ParkingSpaceData] = [
     {
         "title": "Premium Downtown Garage - Valet Service",
         "description": "Luxury covered parking with valet service, EV charging, and 24/7 security. Perfect for business meetings and special occasions.",
@@ -206,7 +230,7 @@ DIVERSE_PARKING_SPACES = [
 ]
 
 # Realistic review data with varied ratings and detailed comments
-SAMPLE_REVIEWS = [
+SAMPLE_REVIEWS: list[ReviewData] = [
     {
         "rating": 5,
         "description": "Absolutely perfect! The valet service was exceptional and my car was spotless when I returned. Worth every penny for special occasions.",
@@ -296,7 +320,7 @@ def populate_database():
     db.init_database()
 
     print("Creating test users...")
-    user_ids = []
+    user_ids: list[int] = []
     for user in TEST_USERS:
         try:
             user_id = db.create_user(
@@ -312,7 +336,7 @@ def populate_database():
             print(f"  ⚠ Failed to create user {user['username']}: {e}")
 
     print("Creating diverse parking spaces...")
-    place_ids = []
+    place_ids: list[int] = []
 
     if not user_ids:
         print("  ❌ No users created, cannot create parking spaces")
@@ -324,13 +348,13 @@ def populate_database():
             added_by = random.choice(user_ids)
 
             place_id = db.create_place(
-                title=str(space["title"]),
-                description=str(space["description"]),
+                title=space["title"],
+                description=space["description"],
                 added_by=added_by,
-                latitude=float(space["latitude"]),
-                longitude=float(space["longitude"]),
-                address=str(space["address"]),
-                price_per_hour=float(space["price_per_hour"]),
+                latitude=space["latitude"],
+                longitude=space["longitude"],
+                address=space["address"],
+                price_per_hour=space["price_per_hour"],
                 tags=space["tags"],
             )
             place_ids.append(place_id)

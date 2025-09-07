@@ -169,11 +169,35 @@ class CreateUserRating(BaseModel):
     rating: int = Field(..., ge=1, le=5)
     description: str | None = None
 
+    @field_validator("ratee_id", mode="before")
+    @classmethod
+    def convert_ratee_id(cls, v: Any) -> int:
+        if isinstance(v, bool):
+            raise ValueError("ratee_id must be an integer, not a boolean")
+        if isinstance(v, dict):
+            raise ValueError("ratee_id must be an integer, not an object")
+        try:
+            return int(v)
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"ratee_id must be an integer: {e}") from e
+
 
 class CreatePlaceRating(BaseModel):
     place_id: int
     rating: int = Field(..., ge=1, le=5)
     description: str | None = None
+
+    @field_validator("place_id", mode="before")
+    @classmethod
+    def convert_place_id(cls, v: Any) -> int:
+        if isinstance(v, bool):
+            raise ValueError("place_id must be an integer, not a boolean")
+        if isinstance(v, dict):
+            raise ValueError("place_id must be an integer, not an object")
+        try:
+            return int(v)
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"place_id must be an integer: {e}") from e
 
 
 class RatingResponse(BaseModel):
@@ -498,7 +522,7 @@ async def get_space(space_id: Annotated[int, Path(ge=0, le=2147483647)]):
 
     return ParkingSpaceResponse(
         id=place["id"],
-        owner_id=place["owned_by"] or place["added_by"],
+        owner_id=place["added_by"],
         title=place["title"],
         description=place["description"],
         lat=place["latitude"] or 0.0,
@@ -527,7 +551,7 @@ async def update_space(space_id: Annotated[int, Path(ge=0, le=2147483647)], spac
     if not place:
         raise HTTPException(status_code=404, detail="Space not found")
 
-    if place["owned_by"] != current_user["id"] and place["added_by"] != current_user["id"]:
+    if place["added_by"] != current_user["id"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     db.update_place(
@@ -573,7 +597,7 @@ async def delete_space(space_id: Annotated[int, Path(ge=0, le=2147483647)]):
     if not place:
         raise HTTPException(status_code=404, detail="Space not found")
 
-    if place["owned_by"] != current_user["id"] and place["added_by"] != current_user["id"]:
+    if place["added_by"] != current_user["id"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     db.delete_place(space_id)
@@ -594,7 +618,7 @@ async def upload_image(space_id: Annotated[int, Path(ge=0, le=2147483647)], file
     if not place:
         raise HTTPException(status_code=404, detail="Space not found")
 
-    if place["owned_by"] != current_user["id"] and place["added_by"] != current_user["id"]:
+    if place["added_by"] != current_user["id"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     # Validate file type
@@ -724,7 +748,7 @@ async def get_space_bookings(space_id: Annotated[int, Path(ge=0, le=2147483647)]
     if not place:
         raise HTTPException(status_code=404, detail="Space not found")
 
-    if place["owned_by"] != current_user["id"] and place["added_by"] != current_user["id"]:
+    if place["added_by"] != current_user["id"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     space_bookings = [
@@ -773,7 +797,7 @@ async def report_license_plate(report: ReportLicensePlate):
         }
     except Exception as e:
         print(f"Error creating license plate report: {e}")
-        raise HTTPException(status_code=500, detail="Failed to submit report")
+        raise HTTPException(status_code=500, detail="Failed to submit report") from e
 
 
 @app.get("/reports", responses={501: {"description": "Not implemented"}})
@@ -783,7 +807,7 @@ async def get_reports():
         return reports
     except Exception as e:
         print(f"Error getting reports: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get reports")
+        raise HTTPException(status_code=500, detail="Failed to get reports") from e
 
 
 @app.post("/verification/upload", response_model=dict)
@@ -795,6 +819,18 @@ async def upload_verification_documents(
 ):
     """Upload verification documents for identity verification"""
     try:
+        # Validate that files are actually uploaded
+        for file, name in [
+            (profile_photo, "profile photo"),
+            (id_document, "ID document"),
+            (vehicle_registration, "vehicle registration"),
+        ]:
+            if not file or not hasattr(file, "content_type") or not file.filename:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Invalid or missing {name}. File upload required.",
+                )
+
         # Validate file types (basic validation)
         allowed_types = ["image/jpeg", "image/jpg", "image/png", "application/pdf"]
 
@@ -860,7 +896,7 @@ async def upload_verification_documents(
         raise
     except Exception as e:
         print(f"Error uploading verification documents: {e}")
-        raise HTTPException(status_code=500, detail="Failed to upload verification documents")
+        raise HTTPException(status_code=500, detail="Failed to upload verification documents") from e
 
 
 @app.get("/verification/status", response_model=VerificationStatus)
@@ -888,10 +924,10 @@ async def get_verification_status(email: str):
         )
     except Exception as e:
         print(f"Error getting verification status: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get verification status")
+        raise HTTPException(status_code=500, detail="Failed to get verification status") from e
 
 
-@app.put("/verification/admin/update-status")
+@app.put("/verification/admin/update-status", responses={404: {"description": "Verification record not found"}})
 async def update_verification_status_admin(user_email: str, update: VerificationStatusUpdate):
     """Update verification status (admin only - simplified for MVP)"""
     try:
@@ -926,7 +962,7 @@ async def update_verification_status_admin(user_email: str, update: Verification
         raise
     except Exception as e:
         print(f"Error updating verification status: {e}")
-        raise HTTPException(status_code=500, detail="Failed to update verification status")
+        raise HTTPException(status_code=500, detail="Failed to update verification status") from e
 
 
 @app.get("/verification/admin/pending")
@@ -937,7 +973,7 @@ async def get_pending_verifications_admin():
         return pending
     except Exception as e:
         print(f"Error getting pending verifications: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get pending verifications")
+        raise HTTPException(status_code=500, detail="Failed to get pending verifications") from e
 
 
 @app.get("/notifications")
@@ -948,7 +984,7 @@ async def get_user_notifications(email: str):
         return notifications
     except Exception as e:
         print(f"Error getting notifications: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get notifications")
+        raise HTTPException(status_code=500, detail="Failed to get notifications") from e
 
 
 @app.get("/notifications/unread-count")
@@ -959,10 +995,10 @@ async def get_unread_count(email: str):
         return {"unread_count": count}
     except Exception as e:
         print(f"Error getting unread count: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get unread count")
+        raise HTTPException(status_code=500, detail="Failed to get unread count") from e
 
 
-@app.put("/notifications/{notification_id}/read")
+@app.put("/notifications/{notification_id}/read", responses={404: {"description": "Notification not found"}})
 async def mark_notification_read(notification_id: int):
     """Mark a notification as read"""
     try:
@@ -970,9 +1006,11 @@ async def mark_notification_read(notification_id: int):
         if not success:
             raise HTTPException(status_code=404, detail="Notification not found")
         return {"message": "Notification marked as read"}
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error marking notification as read: {e}")
-        raise HTTPException(status_code=500, detail="Failed to mark notification as read")
+        raise HTTPException(status_code=500, detail="Failed to mark notification as read") from e
 
 
 # Rating endpoints
@@ -990,9 +1028,9 @@ async def create_user_rating(rating: CreateUserRating):
         return {"id": rating_id, "message": "User rating created successfully"}
     except Exception as e:
         if "UNIQUE constraint failed" in str(e):
-            raise HTTPException(status_code=409, detail="You have already rated this user")
+            raise HTTPException(status_code=409, detail="You have already rated this user") from e
         print(f"Error creating user rating: {e}")
-        raise HTTPException(status_code=500, detail="Failed to create user rating")
+        raise HTTPException(status_code=500, detail="Failed to create user rating") from e
 
 
 @app.post("/ratings/places", response_model=dict)
@@ -1009,9 +1047,9 @@ async def create_place_rating(rating: CreatePlaceRating):
         return {"id": rating_id, "message": "Place rating created successfully"}
     except Exception as e:
         if "UNIQUE constraint failed" in str(e):
-            raise HTTPException(status_code=409, detail="You have already rated this place")
+            raise HTTPException(status_code=409, detail="You have already rated this place") from e
         print(f"Error creating place rating: {e}")
-        raise HTTPException(status_code=500, detail="Failed to create place rating")
+        raise HTTPException(status_code=500, detail="Failed to create place rating") from e
 
 
 @app.get("/ratings/places/{place_id}")
@@ -1026,7 +1064,7 @@ async def get_place_ratings(place_id: int):
         }
     except Exception as e:
         print(f"Error getting place ratings: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get place ratings")
+        raise HTTPException(status_code=500, detail="Failed to get place ratings") from e
 
 
 @app.get("/ratings/users/{user_id}")
@@ -1041,7 +1079,7 @@ async def get_user_ratings(user_id: int):
         }
     except Exception as e:
         print(f"Error getting user ratings: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get user ratings")
+        raise HTTPException(status_code=500, detail="Failed to get user ratings") from e
 
 
 if __name__ == "__main__":
