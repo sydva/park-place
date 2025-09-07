@@ -6,7 +6,7 @@ from typing import Annotated, Any, TypedDict
 
 import anyio
 from backend import database as db
-from email_service import EmailService
+from backend.email_service import EmailService
 from fastapi import (
     BackgroundTasks,
     FastAPI,
@@ -20,7 +20,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr, Field, ValidationInfo, field_validator
-from verification_service import DocumentVerificationService
+from backend.verification_service import DocumentVerificationService
 
 
 # TypedDict for booking data
