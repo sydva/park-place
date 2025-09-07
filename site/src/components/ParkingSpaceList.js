@@ -94,16 +94,18 @@ const ParkingSpaceList = ({
   onSpaceSelect,
   isVisible = true,
   onToggle,
-  isUserVerified = false
+  isUserVerified = false,
+  spaceCounts = null
 }) => {
   // Filter and sort spaces based on user verification status
   const visibleSpaces = isUserVerified 
     ? spaces 
     : spaces.filter(space => !space.requiresVerification);
   
-  const hiddenSpaces = isUserVerified 
-    ? [] 
-    : spaces.filter(space => space.requiresVerification);
+  // Use spaceCounts prop if available, otherwise fall back to calculating from spaces
+  const hiddenCount = spaceCounts && !isUserVerified 
+    ? spaceCounts.verified_only_spaces 
+    : (isUserVerified ? 0 : spaces.filter(space => space.requiresVerification).length);
 
   const sortedSpaces = userLocation 
     ? [...visibleSpaces].sort((a, b) => {
@@ -120,9 +122,9 @@ const ParkingSpaceList = ({
           <h3>Nearby Parking</h3>
           <div className="space-counts">
             <span className="space-count">{sortedSpaces.length} spaces</span>
-            {hiddenSpaces.length > 0 && (
+            {hiddenCount > 0 && (
               <span className="additional-count">
-                +{hiddenSpaces.length} more with verification
+                +{hiddenCount} more with verification
               </span>
             )}
           </div>

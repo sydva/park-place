@@ -144,7 +144,7 @@ class ApiService {
       distance: distance,
       availability: apiSpace.is_available,
       requiresPayment: apiSpace.price_per_hour > 0,
-      requiresVerification: apiSpace.requires_verification || false, // Use backend data
+      requiresVerification: apiSpace.verified_only || false, // Use backend data
       paymentType: 'hourly',
       features: apiSpace.tags || this.generateRandomFeatures(),
       imageUrl: apiSpace.image_url,

@@ -12,6 +12,7 @@ import EditProfile from './components/EditProfile';
 import AuthLayout from './components/AuthLayout';
 import Terms from './components/Terms';
 import Privacy from './components/Privacy';
+import VerifyIdentity from './components/VerifyIdentity';
 import { PreferencesProvider } from './contexts/PreferencesContext';
 
 function AppRoutes() {
@@ -65,6 +66,10 @@ function AppRoutes() {
       <Route 
         path="/add-parking-space" 
         element={<ProtectedRoute><AddParkingSpace /></ProtectedRoute>} 
+      />
+      <Route 
+        path="/verify-identity" 
+        element={<ProtectedRoute><VerifyIdentity /></ProtectedRoute>} 
       />
     </Routes>
   );

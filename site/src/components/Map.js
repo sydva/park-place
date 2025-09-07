@@ -305,48 +305,6 @@ const Map = () => {
         onFilterClick={() => setShowFilterModal(true)}
       />
       
-      {/* Verification Status Display */}
-      {!isUserVerified && spaceCounts && spaceCounts.verified_only_spaces > 0 && (
-        <div style={{
-          position: 'absolute',
-          top: '60px',
-          left: '20px',
-          right: '20px',
-          zIndex: 1000,
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white',
-          padding: '12px 16px',
-          borderRadius: '8px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          fontSize: '14px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}>
-          <div>
-            ✨ <strong>{spaceCounts.verified_only_spaces} additional verified spaces</strong> available in this area
-          </div>
-          <button 
-            style={{
-              background: 'rgba(255,255,255,0.2)',
-              border: '1px solid rgba(255,255,255,0.3)',
-              color: 'white',
-              padding: '6px 12px',
-              borderRadius: '4px',
-              fontSize: '12px',
-              cursor: 'pointer',
-              fontWeight: 'bold'
-            }}
-            onClick={() => {
-              // TODO: Navigate to verification flow
-              console.log('Navigate to verification');
-            }}
-          >
-            Get Verified
-          </button>
-        </div>
-      )}
-      
       {/* Main Map Container */}
       <div className={`map-wrapper ${listVisible ? 'with-sidebar' : 'sidebar-hidden'}`}>
         <MapContainer 
@@ -407,13 +365,14 @@ const Map = () => {
       
       {/* Parking Space List */}
       <ParkingSpaceList
-        spaces={filteredSpaces.length > 0 ? filteredSpaces : parkingSpaces}
+        spaces={parkingSpaces}
         userLocation={position}
         onSpaceClick={handleParkingSpaceClick}
         onSpaceSelect={handleParkingSpaceClick}
         isVisible={listVisible}
         onToggle={() => setListVisible(!listVisible)}
         isUserVerified={isUserVerified}
+        spaceCounts={spaceCounts}
       />
       
       {/* Filter Modal */}
