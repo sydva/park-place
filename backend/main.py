@@ -5,12 +5,21 @@ from pathlib import Path as FilePath
 from typing import Annotated, Any, TypedDict
 
 import anyio
-from fastapi import FastAPI, File, Form, HTTPException, Path, Query, UploadFile
+import database as db
+from fastapi import (
+    BackgroundTasks,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Path,
+    Query,
+    UploadFile,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
-from backend import database as db
 
 
 # TypedDict for booking data
@@ -210,6 +219,18 @@ class RatingResponse(BaseModel):
 def get_current_user() -> dict[str, Any]:
     """Temporary function to return dev user"""
     return DEV_USER
+
+
+async def send_rating_reminder(email: str, place_id: int):
+    try:
+        db.create_notification(
+            user_email=email,
+            title="Rate your recent parking",
+            message=f"Your parking session just ended. Please rate place #{place_id}.",
+            notification_type="info",
+        )
+    except Exception as e:
+        print(f"Failed to send rating reminder: {e}")
 
 
 @asynccontextmanager
@@ -442,6 +463,20 @@ async def search_spaces(query: SearchQuery):
         if query.max_price and price > query.max_price:
             continue
 
+        # Parse tags from JSON string
+        import json
+
+        tags = []
+        if place.get("tags"):
+            try:
+                tags = (
+                    json.loads(place["tags"])
+                    if isinstance(place["tags"], str)
+                    else place["tags"]
+                )
+            except (json.JSONDecodeError, TypeError):
+                tags = []
+
         results.append(
             ParkingSpaceResponse(
                 id=place["id"],
@@ -451,10 +486,10 @@ async def search_spaces(query: SearchQuery):
                 lat=place["latitude"] or 0.0,
                 lng=place["longitude"] or 0.0,
                 price_per_hour=price,
-                tags=[],
+                tags=tags,
                 rating=0.0,
                 is_available=True,
-                requires_verification=place.get("requires_verification", False),
+                requires_verification=place.get("verified_only", False),
                 image_url=None,
                 created_at=place["created_at"] + "Z" if not place["created_at"].endswith("Z") else place["created_at"],
             )
@@ -668,7 +703,7 @@ async def get_my_bookings():
         400: {"description": "Space not available"},
     },
 )
-async def create_booking(booking: Booking):
+async def create_booking(booking: Booking, background_tasks: BackgroundTasks):
     global next_booking_id
     current_user = get_current_user()
 
@@ -701,6 +736,13 @@ async def create_booking(booking: Booking):
     }
 
     bookings_db[str(booking_id)] = booking_data
+
+    # Schedule a rating reminder shortly after end_time (MVP: send immediately if in past)
+    max(0, int((booking.end_time - datetime.utcnow()).total_seconds()))
+    # Using background task without actual delay for simplicity; in production use a scheduler
+    background_tasks.add_task(
+        send_rating_reminder, current_user["email"], booking.space_id
+    )
 
     return BookingResponse(
         id=booking_id,

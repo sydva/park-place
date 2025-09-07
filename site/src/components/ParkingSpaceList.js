@@ -2,9 +2,13 @@ import React from 'react';
 import { getTagDisplay } from '../data/parkingTags';
 import StarRating from './StarRating';
 import Icon from './Icon';
+import { usePreferences } from '../contexts/PreferencesContext';
+import { formatDistance } from '../utils/distance';
 import './ParkingSpaceList.css';
 
 const ParkingSpaceListItem = ({ space, userLocation, onSpaceClick, onSpaceSelect }) => {
+  const { unitsPreference } = usePreferences();
+  
   // Calculate distance from user location
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
     const R = 6371; // Radius of the Earth in km
@@ -22,14 +26,6 @@ const ParkingSpaceListItem = ({ space, userLocation, onSpaceClick, onSpaceSelect
   const distance = userLocation 
     ? calculateDistance(userLocation[0], userLocation[1], space.lat, space.lng)
     : space.distance;
-
-  const formatDistance = (meters) => {
-    if (meters < 1000) {
-      return `${meters}m`;
-    } else {
-      return `${(meters / 1000).toFixed(1)}km`;
-    }
-  };
 
   const formatPrice = (space) => {
     if (space.price === 0) return 'Free';
@@ -60,7 +56,7 @@ const ParkingSpaceListItem = ({ space, userLocation, onSpaceClick, onSpaceSelect
             {space.requiresVerification && <Icon name="check" size={12} className="verification-indicator" />}
           </span>
         </div>
-        <div className="space-distance">{formatDistance(distance)}</div>
+        <div className="space-distance">{formatDistance(distance, unitsPreference)}</div>
       </div>
       
       <div className="space-rating">

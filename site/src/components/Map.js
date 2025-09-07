@@ -1,8 +1,8 @@
-import { useUser } from '@clerk/clerk-react';
-import L from 'leaflet';
+import React, { useState, useEffect, useRef } from 'react';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useEffect, useState } from 'react';
-import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import { useUser } from '@clerk/clerk-react';
 import { filterSpacesByZoom } from '../data/parkingSpaces';
 import apiService from '../services/api';
 import FilterModal from './FilterModal';
@@ -72,7 +72,11 @@ const Map = () => {
   const [listVisible, setListVisible] = useState(true);
   const [mapCenter, setMapCenter] = useState(null);
   const [searchLocation, setSearchLocation] = useState(null);
-
+  
+  // Throttling for map movement to prevent excessive API calls
+  const moveTimeoutRef = useRef(null);
+  const lastLoadedCenter = useRef(null);
+  
   // User verification status from Clerk
   const { user: clerkUser, isLoaded: isUserLoaded } = useUser();
   const [isUserVerified, setIsUserVerified] = useState(false);
@@ -126,6 +130,9 @@ const Map = () => {
               const counts = await apiService.getSpacesCount(userPos[0], userPos[1], 5.0);
               setSpaceCounts(counts);
               setVisibleSpaces(filterSpacesByZoom(spaces, 16));
+              
+              // Set initial loaded center for throttling
+              lastLoadedCenter.current = userPos;
             } catch (apiError) {
               console.error('Failed to load parking spaces from API:', apiError);
               // Fallback to mock data if API fails
@@ -155,6 +162,15 @@ const Map = () => {
     };
 
     loadParkingData();
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (moveTimeoutRef.current) {
+        clearTimeout(moveTimeoutRef.current);
+      }
+    };
   }, []);
 
   if (loading) {
@@ -193,7 +209,51 @@ const Map = () => {
   };
 
   const handleMoveChange = (center) => {
-    // Could regenerate parking spaces for new area in real app
+    // Clear any existing timeout
+    if (moveTimeoutRef.current) {
+      clearTimeout(moveTimeoutRef.current);
+    }
+
+    // Check if we've moved significantly (more than ~500m)
+    if (lastLoadedCenter.current) {
+      const distance = Math.sqrt(
+        Math.pow(center[0] - lastLoadedCenter.current[0], 2) +
+        Math.pow(center[1] - lastLoadedCenter.current[1], 2)
+      );
+      // If distance is less than ~0.005 degrees (~500m), don't reload
+      if (distance < 0.005) {
+        return;
+      }
+    }
+
+    // Throttle API calls - wait 1 second after user stops panning
+    moveTimeoutRef.current = setTimeout(async () => {
+      try {
+        let userEmail = null;
+        if (clerkUser?.primaryEmailAddress?.emailAddress) {
+          userEmail = clerkUser.primaryEmailAddress.emailAddress;
+        }
+        
+        // Load parking spaces for the new map center
+        const newSpaces = await apiService.getNearbySpaces(center[0], center[1], 5.0, userEmail);
+        setParkingSpaces(newSpaces);
+        
+        // Get space counts for new location
+        const counts = await apiService.getSpacesCount(center[0], center[1], 5.0);
+        setSpaceCounts(counts);
+        
+        // Apply current filters to new spaces
+        applyFilters(filters, newSpaces);
+        
+        // Update last loaded center
+        lastLoadedCenter.current = center;
+        
+        console.log(`Loaded ${newSpaces.length} parking spaces for new location:`, center);
+      } catch (error) {
+        console.error('Failed to load parking spaces for new location:', error);
+        // Keep existing spaces if API fails
+      }
+    }, 1000);
   };
 
   const handleParkingSpaceClick = (space) => {
@@ -225,6 +285,9 @@ const Map = () => {
 
       // Apply current filters to new spaces
       applyFilters(filters, newSpaces);
+      
+      // Update last loaded center to prevent duplicate API calls
+      lastLoadedCenter.current = [location.lat, location.lng];
     } catch (error) {
       console.error('Failed to load parking spaces for search location:', error);
       // Fallback to mock data if API fails

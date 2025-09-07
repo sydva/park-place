@@ -1,10 +1,11 @@
-import { SignInButton, useClerk, useUser } from '@clerk/clerk-react';
-import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { usePreferences } from '../contexts/PreferencesContext';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { useUser, useClerk, SignInButton } from '@clerk/clerk-react';
 import apiService from '../services/api';
-import Icon from './Icon';
 import './UserMenu.css';
+import Icon from './Icon';
+import NotificationsModal from './NotificationsModal';
+import { usePreferences } from '../contexts/PreferencesContext';
 
 const UserMenu = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -15,6 +16,7 @@ const UserMenu = () => {
   const [editingField, setEditingField] = useState(null);
   const [editValue, setEditValue] = useState('');
   const [editState, setEditState] = useState('');
+  const [showNotifications, setShowNotifications] = useState(false);
   const navigate = useNavigate();
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
@@ -80,8 +82,6 @@ const UserMenu = () => {
     setIsOpen(false);
     navigate('/add-parking-space');
   };
-
-
 
   const handleVerifyIdentity = () => {
     setIsOpen(false);
@@ -293,6 +293,14 @@ const UserMenu = () => {
                   </>
                 )}
                 {/* Authenticated actions */}
+                <button className="menu-action-button" onClick={() => setShowNotifications(true)}>
+                  Messages {unreadCount > 0 ? `(${unreadCount})` : ''}
+                </button>
+                {dbUserProfile && !dbUserProfile.is_verified && (
+                  <button className="menu-action-button verify-button" onClick={handleVerifyIdentity}>
+                    <Icon name="lock" size={14} /> Get Verified
+                  </button>
+                )}
                 <button className="menu-action-button" onClick={handleReportLicensePlate}>
                   Report License Plate
                 </button>
@@ -318,6 +326,19 @@ const UserMenu = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {showNotifications && user?.primaryEmailAddress?.emailAddress && (
+        <NotificationsModal 
+          email={user.primaryEmailAddress.emailAddress} 
+          onClose={() => {
+            setShowNotifications(false);
+            // Optionally refresh unread count after closing
+            apiService.getUnreadCount(user.primaryEmailAddress.emailAddress)
+              .then((c) => setUnreadCount(c.unread_count))
+              .catch(() => {});
+          }}
+        />
       )}
     </div>
   );

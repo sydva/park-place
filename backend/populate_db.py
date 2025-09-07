@@ -229,6 +229,228 @@ DIVERSE_PARKING_SPACES: list[ParkingSpaceData] = [
     },
 ]
 
+# Extended Bay Area parking spaces for broader coverage
+BAY_AREA_PARKING_SPACES = [
+    # Oakland spaces
+    {
+        "title": "Downtown Oakland Garage - Lake Merritt",
+        "description": "Modern parking structure near Lake Merritt with beautiful lake views. Walking distance to restaurants and BART.",
+        "latitude": 37.8044,
+        "longitude": -122.2711,
+        "address": "1234 Grand Ave, Oakland, CA",
+        "price_per_hour": 8.0,
+        "tags": ["covered", "security-camera", "well-lit"],
+        "verified_only": False,
+    },
+    {
+        "title": "Oakland Airport Long-Term Parking",
+        "description": "Secure long-term parking with shuttle service to Oakland International Airport terminals.",
+        "latitude": 37.7213,
+        "longitude": -122.2200,
+        "address": "1 Airport Dr, Oakland, CA",
+        "price_per_hour": 3.0,
+        "tags": ["covered", "security-camera", "24-7-access", "wide-spaces"],
+        "verified_only": True,
+    },
+    {
+        "title": "Jack London Square - Waterfront Dining",
+        "description": "Premium parking for waterfront dining and entertainment district. Validated parking available at select restaurants.",
+        "latitude": 37.7946,
+        "longitude": -122.2776,
+        "address": "55 Harrison St, Oakland, CA",
+        "price_per_hour": 12.0,
+        "tags": ["covered", "valet", "well-lit"],
+        "verified_only": True,
+    },
+    # Berkeley spaces
+    {
+        "title": "UC Berkeley Campus Visitor Parking",
+        "description": "Official university parking for campus visitors, events, and prospective students. Permit required.",
+        "latitude": 37.8719,
+        "longitude": -122.2585,
+        "address": "Berkeley Way, Berkeley, CA",
+        "price_per_hour": 6.0,
+        "tags": ["security-camera", "disabled-access"],
+        "verified_only": True,
+    },
+    {
+        "title": "Berkeley BART Station Commuter Lot",
+        "description": "Convenient commuter parking with direct BART access to San Francisco and Peninsula.",
+        "latitude": 37.8713,
+        "longitude": -122.2685,
+        "address": "2160 Shattuck Ave, Berkeley, CA",
+        "price_per_hour": 2.0,
+        "tags": ["wide-spaces", "well-lit", "24-7-access"],
+        "verified_only": False,
+    },
+    {
+        "title": "Telegraph Avenue - Student Quarter",
+        "description": "Affordable parking in the heart of Berkeley's student district. Close to shops, cafes, and bookstores.",
+        "latitude": 37.8688,
+        "longitude": -122.2594,
+        "address": "2500 Telegraph Ave, Berkeley, CA",
+        "price_per_hour": 4.0,
+        "tags": ["well-lit"],
+        "verified_only": False,
+    },
+    # San Jose spaces
+    {
+        "title": "Silicon Valley Tech Campus - Premium",
+        "description": "Executive parking for tech meetings and conferences. EV charging stations and valet service available.",
+        "latitude": 37.3382,
+        "longitude": -121.8863,
+        "address": "1000 N Mathilda Ave, Sunnyvale, CA",
+        "price_per_hour": 20.0,
+        "tags": ["ev-charging", "covered", "valet", "security-camera"],
+        "verified_only": True,
+    },
+    {
+        "title": "San Jose Convention Center",
+        "description": "Large capacity parking for conventions, trade shows, and events. Multiple access points and good signage.",
+        "latitude": 37.3297,
+        "longitude": -121.8892,
+        "address": "150 W San Carlos St, San Jose, CA",
+        "price_per_hour": 10.0,
+        "tags": ["covered", "wide-spaces", "disabled-access", "24-7-access"],
+        "verified_only": True,
+    },
+    {
+        "title": "Santana Row Shopping - Luxury District",
+        "description": "Upscale shopping and dining district with premium parking amenities. Validation available at participating stores.",
+        "latitude": 37.3213,
+        "longitude": -121.9464,
+        "address": "377 Santana Row, San Jose, CA",
+        "price_per_hour": 15.0,
+        "tags": ["covered", "valet", "security-camera", "disabled-access"],
+        "verified_only": True,
+    },
+    {
+        "title": "San Jose Airport Economy Lot",
+        "description": "Budget-friendly airport parking with free shuttle service running every 10 minutes.",
+        "latitude": 37.3639,
+        "longitude": -121.9289,
+        "address": "1701 Airport Blvd, San Jose, CA",
+        "price_per_hour": 2.5,
+        "tags": ["wide-spaces", "security-camera", "24-7-access"],
+        "verified_only": False,
+    },
+    # Palo Alto spaces
+    {
+        "title": "Stanford University Medical Center",
+        "description": "Hospital visitor and patient parking with covered walkways. Validation available for appointments.",
+        "latitude": 37.4323,
+        "longitude": -122.1697,
+        "address": "300 Pasteur Dr, Stanford, CA",
+        "price_per_hour": 8.0,
+        "tags": ["covered", "disabled-access", "well-lit"],
+        "verified_only": False,
+    },
+    {
+        "title": "Palo Alto Caltrain Station",
+        "description": "Commuter parking for Caltrain service to San Francisco and Silicon Valley destinations.",
+        "latitude": 37.4431,
+        "longitude": -122.1635,
+        "address": "95 University Ave, Palo Alto, CA",
+        "price_per_hour": 3.0,
+        "tags": ["24-7-access", "security-camera"],
+        "verified_only": False,
+    },
+    {
+        "title": "University Avenue - Downtown Palo Alto",
+        "description": "Premium downtown parking for shopping, dining, and business meetings in Palo Alto's main district.",
+        "latitude": 37.4419,
+        "longitude": -122.1430,
+        "address": "123 University Ave, Palo Alto, CA",
+        "price_per_hour": 18.0,
+        "tags": ["covered", "well-lit", "disabled-access"],
+        "verified_only": True,
+    },
+    # Fremont/South Bay spaces
+    {
+        "title": "Fremont BART End Station",
+        "description": "Large commuter lot serving the southern end of BART system. Popular with South Bay commuters.",
+        "latitude": 37.5576,
+        "longitude": -121.9764,
+        "address": "2000 BART Way, Fremont, CA",
+        "price_per_hour": 1.5,
+        "tags": ["wide-spaces", "24-7-access", "well-lit"],
+        "verified_only": False,
+    },
+    {
+        "title": "Tesla Fremont Factory - Visitor Parking",
+        "description": "Visitor parking for Tesla factory tours and employee guests. All spots equipped with Tesla charging.",
+        "latitude": 37.4937,
+        "longitude": -121.9552,
+        "address": "45500 Fremont Blvd, Fremont, CA",
+        "price_per_hour": 5.0,
+        "tags": ["ev-charging", "security-camera", "covered"],
+        "verified_only": True,
+    },
+    # Richmond/North Bay spaces
+    {
+        "title": "Richmond BART Ferry Connection",
+        "description": "Multi-modal parking serving BART and ferry connections to San Francisco and Marin County.",
+        "latitude": 37.9329,
+        "longitude": -122.3533,
+        "address": "1700 Bissell Ave, Richmond, CA",
+        "price_per_hour": 2.0,
+        "tags": ["wide-spaces", "security-camera", "well-lit"],
+        "verified_only": False,
+    },
+    {
+        "title": "Point Richmond Historic District",
+        "description": "Charming small-town parking in historic Point Richmond with bay views and local shops.",
+        "latitude": 37.9063,
+        "longitude": -122.3774,
+        "address": "139 Park Pl, Richmond, CA",
+        "price_per_hour": 4.0,
+        "tags": ["well-lit"],
+        "verified_only": False,
+    },
+    # Daly City/Peninsula spaces
+    {
+        "title": "Daly City BART - SF Gateway",
+        "description": "First BART station outside San Francisco with ample parking and bus connections.",
+        "latitude": 37.7061,
+        "longitude": -122.4690,
+        "address": "500 John Daly Blvd, Daly City, CA",
+        "price_per_hour": 3.0,
+        "tags": ["covered", "security-camera", "24-7-access"],
+        "verified_only": False,
+    },
+    {
+        "title": "Westlake Shopping Center - Family Hub",
+        "description": "Family-friendly shopping center with wide parking spaces and easy access to stores and dining.",
+        "latitude": 37.7008,
+        "longitude": -122.4830,
+        "address": "1200 Southgate Ave, Daly City, CA",
+        "price_per_hour": 0.0,
+        "tags": ["wide-spaces", "disabled-access", "well-lit"],
+        "verified_only": False,
+    },
+    # Walnut Creek/East Bay spaces
+    {
+        "title": "Walnut Creek BART - Suburban Hub",
+        "description": "Major suburban BART station with large parking structure serving Contra Costa County commuters.",
+        "latitude": 37.9061,
+        "longitude": -122.0678,
+        "address": "200 Ygnacio Valley Rd, Walnut Creek, CA",
+        "price_per_hour": 4.0,
+        "tags": ["covered", "security-camera", "disabled-access"],
+        "verified_only": False,
+    },
+    {
+        "title": "Broadway Plaza - Upscale Shopping",
+        "description": "Premium outdoor shopping center with high-end stores, restaurants, and entertainment options.",
+        "latitude": 37.8951,
+        "longitude": -122.0585,
+        "address": "1275 Broadway Plaza, Walnut Creek, CA",
+        "price_per_hour": 12.0,
+        "tags": ["covered", "valet", "disabled-access", "security-camera"],
+        "verified_only": True,
+    },
+]
+
 # Realistic review data with varied ratings and detailed comments
 SAMPLE_REVIEWS: list[ReviewData] = [
     {
@@ -342,7 +564,11 @@ def populate_database():
         print("  ❌ No users created, cannot create parking spaces")
         return
 
-    for _i, space in enumerate(DIVERSE_PARKING_SPACES):
+    # Combine both San Francisco and Bay Area spaces
+    all_spaces = DIVERSE_PARKING_SPACES + BAY_AREA_PARKING_SPACES
+    print(f"  Adding {len(all_spaces)} parking spaces across the Bay Area...")
+
+    for _i, space in enumerate(all_spaces):
         try:
             # Randomly assign each space to a user
             added_by = random.choice(user_ids)

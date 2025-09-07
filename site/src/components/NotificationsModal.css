@@ -1,0 +1,139 @@
+.notif-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 4000;
+  padding: 20px;
+}
+
+.notif-modal {
+  width: min(720px, 100%);
+  max-height: 80vh;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.35);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.notif-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid #e9ecef;
+  background: #fafcff;
+}
+
+.notif-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.notif-badge {
+  background: #1976d2;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.notif-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mark-all {
+  background: #e3f2fd;
+  color: #1976d2;
+  border: 1px solid #bbdefb;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.notif-body {
+  overflow: auto;
+}
+
+.notif-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.notif-item {
+  padding: 14px 18px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.notif-item.unread { background: #f7fbff; }
+
+.notif-item.info .notif-dot { background: #1976d2; }
+.notif-item.warning .notif-dot { background: #f57c00; }
+.notif-item.success .notif-dot { background: #2e7d32; }
+
+.notif-item-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.notif-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #1976d2;
+  flex-shrink: 0;
+}
+
+.notif-item-title {
+  font-weight: 700;
+  color: #263238;
+  flex: 1;
+}
+
+.notif-time {
+  font-size: 12px;
+  color: #90a4ae;
+}
+
+.notif-message {
+  color: #455a64;
+  margin: 8px 0 0 20px;
+}
+
+.notif-item-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.mark-read {
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.notif-loading, .notif-error, .notif-empty {
+  padding: 30px;
+  text-align: center;
+  color: #607d8b;
+}

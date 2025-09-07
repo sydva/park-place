@@ -855,3 +855,18 @@ def get_pending_verifications() -> list[dict[str, Any]]:
         """
         )
         return [dict(row) for row in cursor.fetchall()]
+
+
+def get_parker_by_license_plate(license_plate: str) -> dict[str, Any] | None:
+    """Find a user by their license plate number (ignores state)"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            SELECT * FROM users
+            WHERE license_plate = ?
+            LIMIT 1
+            """,
+            (license_plate.upper(),),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None

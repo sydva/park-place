@@ -15,6 +15,24 @@ class ApiService {
     }
   }
 
+  // Normalizes various backend tag IDs to our frontend keys
+  normalizeTagId(id) {
+    if (!id) return id;
+    const raw = String(id).toLowerCase();
+    // direct replacements
+    const map = {
+      'ev-charging': 'ev_charging',
+      'security-camera': 'camera_monitored',
+      'well-lit': 'well_lit',
+      'wide-spaces': 'wide_spaces',
+      'disabled-access': 'accessible',
+      'near-entrance': 'near_entrance',
+      'car-wash': 'car_wash',
+    };
+    if (map[raw]) return map[raw];
+    return raw.replace(/-/g, '_');
+  }
+
   async searchSpaces(lat, lng, radius = 1.0, filters = {}) {
     try {
       const searchQuery = {
@@ -45,14 +63,11 @@ class ApiService {
     }
   }
 
-  async getNearbySpaces(lat, lng, radius = 1.0, userEmail = null) {
+  async getNearbySpaces(lat, lng, radius = 1.0) {
     try {
-      let url = `${API_BASE_URL}/spaces/nearby?lat=${lat}&lng=${lng}&radius=${radius}`;
-      if (userEmail) {
-        url += `&user_email=${encodeURIComponent(userEmail)}`;
-      }
-      
-      const response = await fetch(url);
+      const response = await fetch(
+        `${API_BASE_URL}/spaces/nearby?lat=${lat}&lng=${lng}&radius=${radius}`
+      );
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -132,6 +147,12 @@ class ApiService {
     // Calculate mock distance (in real app, backend would provide this)
     const distance = Math.floor(Math.random() * 2000) + 100; // 100-2100 meters
 
+    // Normalize incoming tags if present
+    let features = Array.isArray(apiSpace.tags) ? apiSpace.tags.map(t => this.normalizeTagId(t)) : null;
+    if (!features) {
+      features = this.generateRandomFeatures();
+    }
+
     return {
       id: apiSpace.id,
       lat: apiSpace.lat,
@@ -144,9 +165,9 @@ class ApiService {
       distance: distance,
       availability: apiSpace.is_available,
       requiresPayment: apiSpace.price_per_hour > 0,
-      requiresVerification: apiSpace.verified_only || false, // Use backend data
+      requiresVerification: apiSpace.requires_verification || false, // Use backend data
       paymentType: 'hourly',
-      features: apiSpace.tags || this.generateRandomFeatures(),
+      features: features,
       imageUrl: apiSpace.image_url,
       ownerId: apiSpace.owner_id || apiSpace.added_by,
       createdAt: apiSpace.created_at,
@@ -160,13 +181,18 @@ class ApiService {
   }
 
   generateRandomFeatures() {
-    const allFeatures = [
-      'covered', 'ev-charging', 'security-camera', '24-7-access', 
-      'well-lit', 'wide-spaces', 'disabled-access', 'valet'
+    // Valid keys that match parkingTags.js and Icon mapping
+    const valid = [
+      'covered', 'ground_level', 'underground', 'rooftop',
+      'security', 'gated', 'camera_monitored', 'attended',
+      'ev_charging', 'valet', 'car_wash', 'restrooms',
+      'accessible', 'wide_spaces',
+      'compact_only', 'oversized_ok', 'motorcycle',
+      'well_lit', 'near_entrance', 'ventilated'
     ];
-    const numFeatures = Math.floor(Math.random() * 4);
-    const shuffled = allFeatures.sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, numFeatures);
+    const num = Math.floor(Math.random() * 4);
+    const shuffled = valid.slice().sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, num);
   }
 
   // Auth methods
@@ -251,48 +277,26 @@ class ApiService {
     }
   }
 
-  // Notification methods
+  // Notifications
   async getNotifications(email) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/notifications?email=${encodeURIComponent(email)}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Error getting notifications:', error);
-      throw error;
-    }
+    const res = await fetch(`${API_BASE_URL}/notifications?email=${encodeURIComponent(email)}`);
+    if (!res.ok) throw new Error('Failed to load notifications');
+    return await res.json();
   }
 
   async getUnreadCount(email) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/notifications/unread-count?email=${encodeURIComponent(email)}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Error getting unread count:', error);
-      throw error;
-    }
+    const res = await fetch(`${API_BASE_URL}/notifications/unread-count?email=${encodeURIComponent(email)}`);
+    if (!res.ok) throw new Error('Failed to get unread count');
+    return await res.json();
   }
 
   async markNotificationRead(notificationId) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/notifications/${notificationId}/read`, {
-        method: 'PUT',
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-      throw error;
-    }
+    const res = await fetch(`${API_BASE_URL}/notifications/${notificationId}/read`, { method: 'PUT' });
+    if (!res.ok) throw new Error('Failed to mark notification read');
+    return await res.json();
   }
 
+  // Notification methods
   async updateProfile(userData) {
     try {
       const response = await fetch(`${API_BASE_URL}/users/update-profile`, {
