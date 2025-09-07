@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useUser, useClerk, SignInButton } from '@clerk/clerk-react';
-import apiService from '../services/api';
-import './UserMenu.css';
-import Icon from './Icon';
+import { SignInButton, useClerk, useUser } from '@clerk/clerk-react';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { usePreferences } from '../contexts/PreferencesContext';
+import apiService from '../services/api';
+import Icon from './Icon';
+import './UserMenu.css';
 
 const UserMenu = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -81,10 +81,7 @@ const UserMenu = () => {
     navigate('/add-parking-space');
   };
 
-  const handleEditProfile = () => {
-    setIsOpen(false);
-    navigate('/edit-profile');
-  };
+
 
   const handleVerifyIdentity = () => {
     setIsOpen(false);
@@ -139,11 +136,11 @@ const UserMenu = () => {
       }
 
       await apiService.updateProfile(updateData);
-      
+
       // Refresh profile data
       const profile = await apiService.getUserProfileByEmail(user.primaryEmailAddress.emailAddress);
       setDbUserProfile(profile);
-      
+
       cancelEditing();
     } catch (error) {
       console.error('Failed to update field:', error);
@@ -154,17 +151,17 @@ const UserMenu = () => {
   return (
     <div className="user-menu-container">
       <button className="menu-button" onClick={toggleMenu}>
-        ☰
+        MENU
         {unreadCount > 0 && (
           <span className="notification-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
         )}
       </button>
-      
+
       {isOpen && (
         <div className="menu-dropdown">
           <div className="menu-backdrop" onClick={toggleMenu}></div>
           <div className="menu-content">
-            {!isLoaded || profileLoading ? (
+            {!isLoaded ? (
               <div className="menu-item">Loading...</div>
             ) : user ? (
               <>
@@ -177,7 +174,7 @@ const UserMenu = () => {
                 {dbUserProfile ? (
                   <>
                     <div className="menu-item editable-item">
-                      <strong>Username:</strong> 
+                      <strong>Username:</strong>
                       {editingField === 'username' ? (
                         <div className="inline-edit">
                           <input
@@ -194,7 +191,7 @@ const UserMenu = () => {
                       ) : (
                         <div className="field-display">
                           <span>{dbUserProfile.username}</span>
-                          <button 
+                          <button
                             className="edit-icon"
                             onClick={() => startEditing('username', dbUserProfile.username)}
                             aria-label="Edit username"
@@ -237,11 +234,11 @@ const UserMenu = () => {
                       ) : (
                         <div className="field-display">
                           <span>
-                            {dbUserProfile.license_plate ? 
-                              `${dbUserProfile.license_plate_state || ''}${dbUserProfile.license_plate_state ? '-' : ''}${dbUserProfile.license_plate}` : 
+                            {dbUserProfile.license_plate ?
+                              `${dbUserProfile.license_plate_state || ''}${dbUserProfile.license_plate_state ? '-' : ''}${dbUserProfile.license_plate}` :
                               'Not set'}
                           </span>
-                          <button 
+                          <button
                             className="edit-icon"
                             onClick={() => startEditing('license_plate', dbUserProfile.license_plate)}
                             aria-label="Edit license plate"
@@ -252,11 +249,16 @@ const UserMenu = () => {
                         </div>
                       )}
                     </div>
-                    <div className="menu-item">
-                      <strong>Status:</strong> 
+                    <div className="menu-item status-item">
+                      <strong>Status:</strong>
                       <span className={`verification-status ${dbUserProfile.is_verified ? 'verified' : 'unverified'}`}>
                         {dbUserProfile.is_verified ? '✓ Verified User' : '⚠ Unverified'}
                       </span>
+                      {!dbUserProfile.is_verified && (
+                        <button className="verify-inline-button" onClick={handleVerifyIdentity}>
+                          <Icon name="lock" size={12} /> Verify
+                        </button>
+                      )}
                     </div>
                     <div className="menu-item toggle-item">
                       <strong>Distance Units:</strong>
@@ -264,8 +266,8 @@ const UserMenu = () => {
                         <span className={unitsPreference === 'imperial' ? 'active' : ''}>
                           Feet/Miles
                         </span>
-                        <button 
-                          className="toggle-switch" 
+                        <button
+                          className="toggle-switch"
                           onClick={handleUnitsToggle}
                           aria-label={`Switch to ${unitsPreference === 'imperial' ? 'metric' : 'imperial'} units`}
                         >
@@ -280,7 +282,7 @@ const UserMenu = () => {
                 ) : (
                   <>
                     <div className="menu-item">
-                      <strong>Database Status:</strong> 
+                      <strong>Database Status:</strong>
                       <span className="verification-status unverified">
                         ⚠ Not Registered
                       </span>
@@ -291,14 +293,6 @@ const UserMenu = () => {
                   </>
                 )}
                 {/* Authenticated actions */}
-                <button className="menu-action-button" onClick={handleEditProfile}>
-                  Edit Profile
-                </button>
-                {dbUserProfile && !dbUserProfile.is_verified && (
-                  <button className="menu-action-button verify-button" onClick={handleVerifyIdentity}>
-                    <Icon name="lock" size={14} /> Get Verified
-                  </button>
-                )}
                 <button className="menu-action-button" onClick={handleReportLicensePlate}>
                   Report License Plate
                 </button>
@@ -317,10 +311,10 @@ const UserMenu = () => {
                 </SignInButton>
               </>
             )}
-            <div style={{ marginTop: '10px', fontSize: '11px', color: '#90a4ae', textAlign: 'center' }}>
-              <Link to="/terms" style={{ color: 'inherit', textDecoration: 'none', marginRight: '8px' }}>Terms</Link>
+            <div className="menu-footer">
+              <Link to="/terms">Terms</Link>
               ·
-              <Link to="/privacy" style={{ color: 'inherit', textDecoration: 'none', marginLeft: '8px' }}>Privacy</Link>
+              <Link to="/privacy">Privacy</Link>
             </div>
           </div>
         </div>

@@ -8,7 +8,7 @@ import ReportLicensePlate from './components/ReportLicensePlate';
 import AddParkingSpace from './components/AddParkingSpace';
 import ProtectedRoute from './components/ProtectedRoute';
 import CompleteRegistration from './components/CompleteRegistration';
-import EditProfile from './components/EditProfile';
+
 import AuthLayout from './components/AuthLayout';
 import Terms from './components/Terms';
 import Privacy from './components/Privacy';
@@ -53,10 +53,7 @@ function AppRoutes() {
       <Route path="/complete-registration" element={<CompleteRegistration />} />
       <Route path="/map" element={<ProtectedRoute><Map /></ProtectedRoute>} />
       <Route path="/browse" element={<Map />} />
-      <Route 
-        path="/edit-profile" 
-        element={<ProtectedRoute><EditProfile /></ProtectedRoute>} 
-      />
+
       <Route path="/terms" element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route 
