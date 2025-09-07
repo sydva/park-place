@@ -4,18 +4,67 @@ Script to populate the database with diverse test parking spaces, users, and rev
 """
 
 import random
+
 import database as db
 
 # Test user data - now using unified user system
 TEST_USERS = [
-    {"email": "john@example.com", "username": "john_parker", "license_plate": "ABC123", "user_type": "parker", "is_verified": False},
-    {"email": "sara@example.com", "username": "sara_driver", "license_plate": "XYZ789", "user_type": "parker", "is_verified": True}, 
-    {"email": "mike@example.com", "username": "mike_commuter", "license_plate": "DEF456", "user_type": "parker", "is_verified": True},
-    {"email": "garage_owner@example.com", "username": "downtown_garage", "license_plate": "GRG001", "user_type": "parker", "is_verified": True},
-    {"email": "homeowner@example.com", "username": "driveway_sharer", "license_plate": "HOM002", "user_type": "parker", "is_verified": True},
-    {"email": "business@example.com", "username": "office_parking", "license_plate": "BIZ003", "user_type": "parker", "is_verified": False},
-    {"email": "amy@example.com", "username": "amy_reviewer", "license_plate": "AMY456", "user_type": "parker", "is_verified": True},
-    {"email": "carlos@example.com", "username": "carlos_tech", "license_plate": "CAR789", "user_type": "parker", "is_verified": False},
+    {
+        "email": "john@example.com",
+        "username": "john_parker",
+        "license_plate": "ABC123",
+        "user_type": "parker",
+        "is_verified": False,
+    },
+    {
+        "email": "sara@example.com",
+        "username": "sara_driver",
+        "license_plate": "XYZ789",
+        "user_type": "parker",
+        "is_verified": True,
+    },
+    {
+        "email": "mike@example.com",
+        "username": "mike_commuter",
+        "license_plate": "DEF456",
+        "user_type": "parker",
+        "is_verified": True,
+    },
+    {
+        "email": "garage_owner@example.com",
+        "username": "downtown_garage",
+        "license_plate": "GRG001",
+        "user_type": "parker",
+        "is_verified": True,
+    },
+    {
+        "email": "homeowner@example.com",
+        "username": "driveway_sharer",
+        "license_plate": "HOM002",
+        "user_type": "parker",
+        "is_verified": True,
+    },
+    {
+        "email": "business@example.com",
+        "username": "office_parking",
+        "license_plate": "BIZ003",
+        "user_type": "parker",
+        "is_verified": False,
+    },
+    {
+        "email": "amy@example.com",
+        "username": "amy_reviewer",
+        "license_plate": "AMY456",
+        "user_type": "parker",
+        "is_verified": True,
+    },
+    {
+        "email": "carlos@example.com",
+        "username": "carlos_tech",
+        "license_plate": "CAR789",
+        "user_type": "parker",
+        "is_verified": False,
+    },
 ]
 
 # Diverse parking spaces with different amenities, prices, and types
@@ -27,28 +76,35 @@ DIVERSE_PARKING_SPACES = [
         "longitude": -122.4194,
         "address": "123 Market St, San Francisco, CA",
         "price_per_hour": 25.0,
-        "tags": ["covered", "ev-charging", "security-camera", "24-7-access", "valet", "disabled-access"],
-        "verified_only": True
+        "tags": [
+            "covered",
+            "ev-charging",
+            "security-camera",
+            "24-7-access",
+            "valet",
+            "disabled-access",
+        ],
+        "verified_only": True,
     },
     {
         "title": "Budget Street Parking - Basic",
         "description": "Simple street parking spot, no frills but gets the job done. Great for quick stops and budget-conscious parkers.",
         "latitude": 37.7599,
         "longitude": -122.4148,
-        "address": "456 Mission St, San Francisco, CA", 
+        "address": "456 Mission St, San Francisco, CA",
         "price_per_hour": 0.0,
         "tags": [],
-        "verified_only": False
+        "verified_only": False,
     },
     {
-        "title": "Residential Driveway - BART Access", 
+        "title": "Residential Driveway - BART Access",
         "description": "Private driveway in quiet neighborhood, 5-minute walk to BART station. Homeowner provides excellent service.",
         "latitude": 37.7929,
         "longitude": -122.4172,
         "address": "789 California St, San Francisco, CA",
         "price_per_hour": 8.0,
         "tags": ["well-lit", "wide-spaces"],
-        "verified_only": False
+        "verified_only": False,
     },
     {
         "title": "Secure Business Lot - Tech Hub",
@@ -58,7 +114,7 @@ DIVERSE_PARKING_SPACES = [
         "address": "321 Montgomery St, San Francisco, CA",
         "price_per_hour": 15.0,
         "tags": ["covered", "security-camera", "wide-spaces", "disabled-access"],
-        "verified_only": True
+        "verified_only": True,
     },
     {
         "title": "EV Charging Station - Tesla Supercharger",
@@ -68,7 +124,7 @@ DIVERSE_PARKING_SPACES = [
         "address": "654 Castro St, San Francisco, CA",
         "price_per_hour": 12.0,
         "tags": ["ev-charging", "covered", "well-lit"],
-        "verified_only": True
+        "verified_only": True,
     },
     {
         "title": "Compact Car Only - Chinatown Alley",
@@ -78,7 +134,7 @@ DIVERSE_PARKING_SPACES = [
         "address": "987 Grant Ave, San Francisco, CA",
         "price_per_hour": 5.0,
         "tags": [],
-        "verified_only": False
+        "verified_only": False,
     },
     {
         "title": "Night Owl Special - Restaurant District",
@@ -88,7 +144,7 @@ DIVERSE_PARKING_SPACES = [
         "address": "159 Columbus Ave, San Francisco, CA",
         "price_per_hour": 10.0,
         "tags": ["covered", "well-lit", "24-7-access"],
-        "verified_only": False
+        "verified_only": False,
     },
     {
         "title": "Family-Friendly Suburban Spot",
@@ -98,7 +154,7 @@ DIVERSE_PARKING_SPACES = [
         "address": "753 Geary Blvd, San Francisco, CA",
         "price_per_hour": 6.0,
         "tags": ["wide-spaces", "well-lit", "disabled-access"],
-        "verified_only": False
+        "verified_only": False,
     },
     {
         "title": "Event Parking - SOMA Warehouse",
@@ -108,7 +164,7 @@ DIVERSE_PARKING_SPACES = [
         "address": "852 Folsom St, San Francisco, CA",
         "price_per_hour": 18.0,
         "tags": ["wide-spaces", "security-camera", "24-7-access"],
-        "verified_only": True
+        "verified_only": True,
     },
     {
         "title": "Luxury Pacific Heights - City Views",
@@ -118,7 +174,7 @@ DIVERSE_PARKING_SPACES = [
         "address": "741 Fillmore St, San Francisco, CA",
         "price_per_hour": 30.0,
         "tags": ["covered", "valet", "security-camera", "disabled-access"],
-        "verified_only": True
+        "verified_only": True,
     },
     {
         "title": "Senior-Friendly Community Spot",
@@ -128,7 +184,7 @@ DIVERSE_PARKING_SPACES = [
         "address": "963 Irving St, San Francisco, CA",
         "price_per_hour": 4.0,
         "tags": ["disabled-access", "well-lit", "wide-spaces"],
-        "verified_only": False
+        "verified_only": False,
     },
     {
         "title": "Artist Quarter - Creative District",
@@ -138,7 +194,7 @@ DIVERSE_PARKING_SPACES = [
         "address": "258 Haight St, San Francisco, CA",
         "price_per_hour": 7.0,
         "tags": ["well-lit"],
-        "verified_only": False
+        "verified_only": False,
     },
     {
         "title": "Shopping Paradise - Union Square Premium",
@@ -148,7 +204,7 @@ DIVERSE_PARKING_SPACES = [
         "address": "333 Post St, San Francisco, CA",
         "price_per_hour": 22.0,
         "tags": ["covered", "security-camera", "disabled-access", "valet"],
-        "verified_only": True
+        "verified_only": True,
     },
     {
         "title": "Convention Center Hub",
@@ -158,7 +214,7 @@ DIVERSE_PARKING_SPACES = [
         "address": "777 Howard St, San Francisco, CA",
         "price_per_hour": 16.0,
         "tags": ["covered", "wide-spaces", "24-7-access", "disabled-access"],
-        "verified_only": True
+        "verified_only": True,
     },
     {
         "title": "Waterfront Views - Embarcadero",
@@ -168,32 +224,92 @@ DIVERSE_PARKING_SPACES = [
         "address": "101 Embarcadero, San Francisco, CA",
         "price_per_hour": 14.0,
         "tags": ["well-lit", "security-camera"],
-        "verified_only": True
-    }
+        "verified_only": True,
+    },
 ]
 
 # Realistic review data with varied ratings and detailed comments
 SAMPLE_REVIEWS = [
-    {"rating": 5, "description": "Absolutely perfect! The valet service was exceptional and my car was spotless when I returned. Worth every penny for special occasions."},
-    {"rating": 4, "description": "Great location and easy access. Only issue was it took a while to find the entrance, but once there it was smooth sailing."},
-    {"rating": 5, "description": "I park here daily for work and it's been consistently excellent. The security makes me feel safe leaving my car overnight."},
-    {"rating": 3, "description": "Decent spot but a bit pricey for what you get. The space was tight for my SUV but location is convenient."},
-    {"rating": 5, "description": "Amazing EV charging setup! My Tesla was fully charged by the time I finished dinner. The covered parking protected it from rain too."},
-    {"rating": 2, "description": "Really tight space and difficult to maneuver. Only suitable for compact cars. The description should be clearer about size limitations."},
-    {"rating": 4, "description": "Perfect for date night in North Beach! Easy walk to all the restaurants and the spot was well-lit when we returned late."},
-    {"rating": 5, "description": "As a senior citizen, I really appreciated the wide spaces and easy access. No stairs to navigate and close to the medical center."},
-    {"rating": 4, "description": "Great for events! Parked here for a Giants game and the shuttle service to downtown was a nice touch. Will use again."},
-    {"rating": 3, "description": "Beautiful views but very expensive. The location is premium but I'd only use it for special occasions due to the cost."},
-    {"rating": 1, "description": "Terrible experience. The 'free' parking wasn't actually free - had to pay city meter fees. Very misleading description."},
-    {"rating": 5, "description": "Fantastic spot for shopping trips! Right in the heart of Union Square and the validation deal with Macy's saved me money."},
-    {"rating": 4, "description": "Business trip parking was smooth and professional. The key card entry system worked perfectly and location was ideal for meetings."},
-    {"rating": 5, "description": "Love supporting this local homeowner who shares their driveway! Great communication and the BART access is exactly as described."},
-    {"rating": 3, "description": "Okay for the neighborhood but nothing special. Gets the job done for basic parking needs but don't expect any amenities."},
-    {"rating": 4, "description": "The waterfront location is beautiful and perfect for tourists. Easy access to the ferry and pier attractions."},
-    {"rating": 2, "description": "Had trouble with the payment system and no one was available to help. The space itself was fine but the technology needs work."},
-    {"rating": 5, "description": "My go-to spot for Chinatown visits! The owner is friendly and the cash-only policy keeps it simple and affordable."},
-    {"rating": 4, "description": "Convention parking was exactly what I needed. Multiple entrances made it easy to find and the rates were reasonable for downtown."},
-    {"rating": 1, "description": "Arrived to find the space occupied by another vehicle. No contact info provided to resolve the issue. Very frustrating experience."},
+    {
+        "rating": 5,
+        "description": "Absolutely perfect! The valet service was exceptional and my car was spotless when I returned. Worth every penny for special occasions.",
+    },
+    {
+        "rating": 4,
+        "description": "Great location and easy access. Only issue was it took a while to find the entrance, but once there it was smooth sailing.",
+    },
+    {
+        "rating": 5,
+        "description": "I park here daily for work and it's been consistently excellent. The security makes me feel safe leaving my car overnight.",
+    },
+    {
+        "rating": 3,
+        "description": "Decent spot but a bit pricey for what you get. The space was tight for my SUV but location is convenient.",
+    },
+    {
+        "rating": 5,
+        "description": "Amazing EV charging setup! My Tesla was fully charged by the time I finished dinner. The covered parking protected it from rain too.",
+    },
+    {
+        "rating": 2,
+        "description": "Really tight space and difficult to maneuver. Only suitable for compact cars. The description should be clearer about size limitations.",
+    },
+    {
+        "rating": 4,
+        "description": "Perfect for date night in North Beach! Easy walk to all the restaurants and the spot was well-lit when we returned late.",
+    },
+    {
+        "rating": 5,
+        "description": "As a senior citizen, I really appreciated the wide spaces and easy access. No stairs to navigate and close to the medical center.",
+    },
+    {
+        "rating": 4,
+        "description": "Great for events! Parked here for a Giants game and the shuttle service to downtown was a nice touch. Will use again.",
+    },
+    {
+        "rating": 3,
+        "description": "Beautiful views but very expensive. The location is premium but I'd only use it for special occasions due to the cost.",
+    },
+    {
+        "rating": 1,
+        "description": "Terrible experience. The 'free' parking wasn't actually free - had to pay city meter fees. Very misleading description.",
+    },
+    {
+        "rating": 5,
+        "description": "Fantastic spot for shopping trips! Right in the heart of Union Square and the validation deal with Macy's saved me money.",
+    },
+    {
+        "rating": 4,
+        "description": "Business trip parking was smooth and professional. The key card entry system worked perfectly and location was ideal for meetings.",
+    },
+    {
+        "rating": 5,
+        "description": "Love supporting this local homeowner who shares their driveway! Great communication and the BART access is exactly as described.",
+    },
+    {
+        "rating": 3,
+        "description": "Okay for the neighborhood but nothing special. Gets the job done for basic parking needs but don't expect any amenities.",
+    },
+    {
+        "rating": 4,
+        "description": "The waterfront location is beautiful and perfect for tourists. Easy access to the ferry and pier attractions.",
+    },
+    {
+        "rating": 2,
+        "description": "Had trouble with the payment system and no one was available to help. The space itself was fine but the technology needs work.",
+    },
+    {
+        "rating": 5,
+        "description": "My go-to spot for Chinatown visits! The owner is friendly and the cash-only policy keeps it simple and affordable.",
+    },
+    {
+        "rating": 4,
+        "description": "Convention parking was exactly what I needed. Multiple entrances made it easy to find and the rates were reasonable for downtown.",
+    },
+    {
+        "rating": 1,
+        "description": "Arrived to find the space occupied by another vehicle. No contact info provided to resolve the issue. Very frustrating experience.",
+    },
 ]
 
 
@@ -221,12 +337,12 @@ def populate_database():
 
     print("Creating diverse parking spaces...")
     place_ids = []
-    
+
     if not user_ids:
         print("  ❌ No users created, cannot create parking spaces")
         return
 
-    for i, space in enumerate(DIVERSE_PARKING_SPACES):
+    for _i, space in enumerate(DIVERSE_PARKING_SPACES):
         try:
             # Randomly assign each space to a user
             added_by = random.choice(user_ids)
@@ -240,10 +356,12 @@ def populate_database():
                 address=str(space["address"]),
                 price_per_hour=float(space["price_per_hour"]),
                 tags=space["tags"],
-                verified_only=space.get("verified_only", False)
+                verified_only=space.get("verified_only", False),
             )
             place_ids.append(place_id)
-            print(f"  ✓ Created parking space: {space['title']} (ID: {place_id}) - ${space['price_per_hour']}/hr")
+            print(
+                f"  ✓ Created parking space: {space['title']} (ID: {place_id}) - ${space['price_per_hour']}/hr"
+            )
         except Exception as e:
             print(f"  ⚠ Failed to create parking space {space['title']}: {e}")
 
@@ -251,21 +369,23 @@ def populate_database():
     if place_ids and user_ids:
         # Add reviews to make the data more realistic
         num_reviews = min(30, len(SAMPLE_REVIEWS))  # Create up to 30 reviews
-        
-        for i in range(num_reviews):
+
+        for _i in range(num_reviews):
             try:
                 place_id = random.choice(place_ids)
                 user_id = random.choice(user_ids)
                 review_data = random.choice(SAMPLE_REVIEWS)
-                
+
                 # Create place rating
                 db.create_place_rating(
                     user_id=user_id,
                     place_id=place_id,
                     rating=review_data["rating"],
-                    description=review_data["description"]
+                    description=review_data["description"],
                 )
-                print(f"  ✓ Added review: {review_data['rating']} stars for place {place_id}")
+                print(
+                    f"  ✓ Added review: {review_data['rating']} stars for place {place_id}"
+                )
             except Exception as e:
                 # Skip if duplicate rating (unique constraint)
                 if "UNIQUE constraint failed" not in str(e):
@@ -277,24 +397,24 @@ def populate_database():
     print("=" * 60)
     print(f"Total users: {db.get_user_count()}")
     print(f"Total parking spaces: {db.get_place_count()}")
-    
+
     # Show price range
     print("\nPrice Range:")
     print("  • Free parking: Available")
-    print("  • Budget ($4-8/hr): Multiple options") 
+    print("  • Budget ($4-8/hr): Multiple options")
     print("  • Standard ($10-18/hr): Most popular")
     print("  • Premium ($20-30/hr): Luxury locations")
-    
+
     print("\nAmenities Available:")
     print("  • EV Charging, Valet Service, 24/7 Security")
     print("  • Covered Parking, Wide Spaces, Disabled Access")
     print("  • Well-lit, Security Cameras")
-    
+
     print("\nParking Types:")
-    print("  • Street parking, Driveways, Garages")  
+    print("  • Street parking, Driveways, Garages")
     print("  • Compact car spots, Family-friendly spaces")
     print("  • Business lots, Event parking, Luxury spots")
-    
+
     print("\nAPI endpoints to test:")
     print("  - GET http://localhost:8000/spaces")
     print("  - GET http://localhost:8000/spaces/nearby?lat=37.7749&lng=-122.4194")

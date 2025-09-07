@@ -5,12 +5,11 @@ from pathlib import Path as FilePath
 from typing import Annotated, Any, TypedDict
 
 import anyio
+import database as db
 from fastapi import FastAPI, File, Form, HTTPException, Path, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
-
-import database as db
 
 
 # TypedDict for booking data
@@ -153,7 +152,7 @@ class VerificationStatus(BaseModel):
     user_email: str
     status: str  # pending, verified, rejected
     profile_photo_url: str | None = None
-    id_document_url: str | None = None 
+    id_document_url: str | None = None
     vehicle_registration_url: str | None = None
     verification_notes: str | None = None
     verified_at: str | None = None
@@ -342,14 +341,14 @@ async def update_user_profile(user_data: UserRegister):
         user = db.get_user_by_email(user_data.email)
         if not user:
             raise HTTPException(status_code=404, detail="User profile not found")
-        
+
         # Parse license plate if provided
         license_plate_state = None
         license_plate_number = None
         if user_data.car_license_plate and len(user_data.car_license_plate) >= 2:
             license_plate_state = user_data.car_license_plate[:2].upper()
             license_plate_number = user_data.car_license_plate[2:].upper()
-        
+
         # Update the user record
         success = db.update_user(
             email=user_data.email,
@@ -358,10 +357,10 @@ async def update_user_profile(user_data: UserRegister):
             license_plate_state=license_plate_state,
             units_preference=user_data.units_preference,
         )
-        
+
         if not success:
             raise HTTPException(status_code=500, detail="Failed to update profile")
-            
+
         # Return updated profile
         updated_user = db.get_user_by_email(user_data.email)
         return {
@@ -414,8 +413,10 @@ async def search_spaces(query: SearchQuery, user_email: str | None = None):
     if user_email:
         user = db.get_user_by_email(user_email)
         user_is_verified = user.get("is_verified", False) if user else False
-    
-    places = db.search_places_by_location(query.lat, query.lng, query.radius, user_is_verified)
+
+    places = db.search_places_by_location(
+        query.lat, query.lng, query.radius, user_is_verified
+    )
 
     results: list[ParkingSpaceResponse] = []
     for place in places:
@@ -429,7 +430,7 @@ async def search_spaces(query: SearchQuery, user_email: str | None = None):
         results.append(
             ParkingSpaceResponse(
                 id=place["id"],
-                owner_id=place["owned_by"] or place["added_by"],
+                owner_id=place["added_by"],
                 title=place["title"],
                 description=place["description"],
                 lat=place["latitude"] or 0.0,
@@ -805,9 +806,9 @@ async def report_license_plate(report: ReportLicensePlate):
             license_plate=report.license_plate,
             description=report.description,
             reporter_email=report.reporter_email,
-            space_id=report.space_id
+            space_id=report.space_id,
         )
-        
+
         # Find the owner of the reported license plate and send notification
         parker = db.get_parker_by_license_plate(report.license_plate)
         if parker:
@@ -816,10 +817,13 @@ async def report_license_plate(report: ReportLicensePlate):
                 user_email=parker["email"],
                 title="License Plate Reported",
                 message=f"Your license plate {report.license_plate} has been reported. Reason: {report.description}",
-                notification_type="warning"
+                notification_type="warning",
             )
-            
-        return {"message": "License plate report submitted successfully", "report_id": report_id}
+
+        return {
+            "message": "License plate report submitted successfully",
+            "report_id": report_id,
+        }
     except Exception as e:
         print(f"Error creating license plate report: {e}")
         raise HTTPException(status_code=500, detail="Failed to submit report")
@@ -846,62 +850,76 @@ async def upload_verification_documents(
     try:
         # Validate file types (basic validation)
         allowed_types = ["image/jpeg", "image/jpg", "image/png", "application/pdf"]
-        
-        for file, name in [(profile_photo, "profile photo"), (id_document, "ID document"), (vehicle_registration, "vehicle registration")]:
+
+        for file, name in [
+            (profile_photo, "profile photo"),
+            (id_document, "ID document"),
+            (vehicle_registration, "vehicle registration"),
+        ]:
             if file.content_type not in allowed_types:
-                raise HTTPException(status_code=400, detail=f"Invalid file type for {name}. Only JPEG, PNG, and PDF allowed.")
-        
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid file type for {name}. Only JPEG, PNG, and PDF allowed.",
+                )
+
         # Create unique filenames with timestamp
         import uuid
+
         timestamp = int(time.time())
-        
+
         def create_filename(original_name: str, doc_type: str) -> str:
-            ext = original_name.split('.')[-1] if '.' in original_name else 'jpg'
+            ext = original_name.split(".")[-1] if "." in original_name else "jpg"
             return f"{doc_type}_{user_email.replace('@', '_')}_{timestamp}_{uuid.uuid4().hex[:8]}.{ext}"
-        
+
         # Save files
-        profile_photo_filename = create_filename(profile_photo.filename or "photo.jpg", "profile")
+        profile_photo_filename = create_filename(
+            profile_photo.filename or "photo.jpg", "profile"
+        )
         id_document_filename = create_filename(id_document.filename or "id.jpg", "id")
-        vehicle_reg_filename = create_filename(vehicle_registration.filename or "registration.jpg", "vehicle")
-        
+        vehicle_reg_filename = create_filename(
+            vehicle_registration.filename or "registration.jpg", "vehicle"
+        )
+
         # Save files to upload directory
         for file, filename in [
             (profile_photo, profile_photo_filename),
             (id_document, id_document_filename),
-            (vehicle_registration, vehicle_reg_filename)
+            (vehicle_registration, vehicle_reg_filename),
         ]:
             file_path = UPLOAD_DIR / filename
             contents = await file.read()
             with open(file_path, "wb") as f:
                 f.write(contents)
-        
+
         # Create verification record in database
         verification_id = db.create_user_verification(
             user_email=user_email,
             profile_photo_url=f"/uploads/{profile_photo_filename}",
             id_document_url=f"/uploads/{id_document_filename}",
-            vehicle_registration_url=f"/uploads/{vehicle_reg_filename}"
+            vehicle_registration_url=f"/uploads/{vehicle_reg_filename}",
         )
-        
+
         # Send notification to user
         db.create_notification(
             user_email=user_email,
             title="Verification Documents Submitted",
             message="Your verification documents have been submitted for review. You will be notified once the review is complete.",
-            notification_type="info"
+            notification_type="info",
         )
-        
+
         return {
             "message": "Verification documents uploaded successfully",
             "verification_id": verification_id,
-            "status": "pending"
+            "status": "pending",
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
         print(f"Error uploading verification documents: {e}")
-        raise HTTPException(status_code=500, detail="Failed to upload verification documents")
+        raise HTTPException(
+            status_code=500, detail="Failed to upload verification documents"
+        )
 
 
 @app.get("/verification/status", response_model=VerificationStatus)
@@ -914,9 +932,9 @@ async def get_verification_status(email: str):
             return VerificationStatus(
                 user_email=email,
                 status="not_started",
-                created_at=datetime.now().isoformat()
+                created_at=datetime.now().isoformat(),
             )
-        
+
         return VerificationStatus(
             user_email=verification["user_email"],
             status=verification["status"],
@@ -925,7 +943,7 @@ async def get_verification_status(email: str):
             vehicle_registration_url=verification.get("vehicle_registration_url"),
             verification_notes=verification.get("verification_notes"),
             verified_at=verification.get("verified_at"),
-            created_at=verification["created_at"]
+            created_at=verification["created_at"],
         )
     except Exception as e:
         print(f"Error getting verification status: {e}")
@@ -934,8 +952,7 @@ async def get_verification_status(email: str):
 
 @app.put("/verification/admin/update-status")
 async def update_verification_status_admin(
-    user_email: str,
-    update: VerificationStatusUpdate
+    user_email: str, update: VerificationStatusUpdate
 ):
     """Update verification status (admin only - simplified for MVP)"""
     try:
@@ -943,12 +960,12 @@ async def update_verification_status_admin(
             user_email=user_email,
             status=update.status,
             verified_by=update.verified_by or "admin",
-            verification_notes=update.verification_notes
+            verification_notes=update.verification_notes,
         )
-        
+
         if not success:
             raise HTTPException(status_code=404, detail="Verification record not found")
-        
+
         # Send notification to user
         if update.status == "verified":
             notification_title = "Verification Approved"
@@ -956,21 +973,23 @@ async def update_verification_status_admin(
         else:
             notification_title = "Verification Rejected"
             notification_message = f"Your verification was not approved. Reason: {update.verification_notes or 'Please resubmit with clearer documents.'}"
-        
+
         db.create_notification(
             user_email=user_email,
             title=notification_title,
             message=notification_message,
-            notification_type="info" if update.status == "verified" else "warning"
+            notification_type="info" if update.status == "verified" else "warning",
         )
-        
+
         return {"message": f"Verification status updated to {update.status}"}
-        
+
     except HTTPException:
         raise
     except Exception as e:
         print(f"Error updating verification status: {e}")
-        raise HTTPException(status_code=500, detail="Failed to update verification status")
+        raise HTTPException(
+            status_code=500, detail="Failed to update verification status"
+        )
 
 
 @app.get("/verification/admin/pending")
@@ -981,7 +1000,9 @@ async def get_pending_verifications_admin():
         return pending
     except Exception as e:
         print(f"Error getting pending verifications: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get pending verifications")
+        raise HTTPException(
+            status_code=500, detail="Failed to get pending verifications"
+        )
 
 
 @app.get("/notifications")
@@ -1016,7 +1037,9 @@ async def mark_notification_read(notification_id: int):
         return {"message": "Notification marked as read"}
     except Exception as e:
         print(f"Error marking notification as read: {e}")
-        raise HTTPException(status_code=500, detail="Failed to mark notification as read")
+        raise HTTPException(
+            status_code=500, detail="Failed to mark notification as read"
+        )
 
 
 # Rating endpoints
@@ -1029,12 +1052,14 @@ async def create_user_rating(rating: CreateUserRating):
             rater_id=current_user["id"],
             ratee_id=rating.ratee_id,
             rating=rating.rating,
-            description=rating.description
+            description=rating.description,
         )
         return {"id": rating_id, "message": "User rating created successfully"}
     except Exception as e:
         if "UNIQUE constraint failed" in str(e):
-            raise HTTPException(status_code=409, detail="You have already rated this user")
+            raise HTTPException(
+                status_code=409, detail="You have already rated this user"
+            )
         print(f"Error creating user rating: {e}")
         raise HTTPException(status_code=500, detail="Failed to create user rating")
 
@@ -1048,12 +1073,14 @@ async def create_place_rating(rating: CreatePlaceRating):
             user_id=current_user["id"],
             place_id=rating.place_id,
             rating=rating.rating,
-            description=rating.description
+            description=rating.description,
         )
         return {"id": rating_id, "message": "Place rating created successfully"}
     except Exception as e:
         if "UNIQUE constraint failed" in str(e):
-            raise HTTPException(status_code=409, detail="You have already rated this place")
+            raise HTTPException(
+                status_code=409, detail="You have already rated this place"
+            )
         print(f"Error creating place rating: {e}")
         raise HTTPException(status_code=500, detail="Failed to create place rating")
 
@@ -1066,7 +1093,7 @@ async def get_place_ratings(place_id: int):
         return {
             "ratings": ratings,
             "count": len(ratings),
-            "average": db.get_place_average_rating(place_id)
+            "average": db.get_place_average_rating(place_id),
         }
     except Exception as e:
         print(f"Error getting place ratings: {e}")
@@ -1081,7 +1108,7 @@ async def get_user_ratings(user_id: int):
         return {
             "ratings": ratings,
             "count": len(ratings),
-            "average": db.get_user_average_rating(user_id)
+            "average": db.get_user_average_rating(user_id),
         }
     except Exception as e:
         print(f"Error getting user ratings: {e}")
