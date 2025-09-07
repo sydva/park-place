@@ -56,9 +56,7 @@ class GooglePlacesAPI:
         self.api_key = api_key
         self.base_url = "https://maps.googleapis.com/maps/api/place"
 
-    async def search_parking_near_location(
-        self, latitude: float, longitude: float, radius: int = 1000
-    ) -> list[ParkingSpace]:
+    async def search_parking_near_location(self, latitude: float, longitude: float, radius: int = 1000) -> list[ParkingSpace]:
         """Search for parking locations near coordinates"""
 
         url = f"{self.base_url}/nearbysearch/json"
@@ -87,14 +85,10 @@ class GooglePlacesAPI:
                         description=details.get("formatted_address", ""),
                         latitude=place["geometry"]["location"]["lat"],
                         longitude=place["geometry"]["location"]["lng"],
-                        address=details.get(
-                            "formatted_address", place.get("vicinity", "")
-                        ),
+                        address=details.get("formatted_address", place.get("vicinity", "")),
                         price_per_hour=0.0,  # Google doesn't provide pricing
                         features=self._extract_features(details),
-                        hours=details.get("opening_hours", {}).get(
-                            "weekday_text", None
-                        ),
+                        hours=details.get("opening_hours", {}).get("weekday_text", None),
                         phone=details.get("formatted_phone_number"),
                         website=details.get("website"),
                     )
@@ -186,9 +180,7 @@ class NYCOpenDataAPI:
                             id=f"nyc_{i}_{regulation.get('objectid', 'unknown')}",
                             source="nyc",
                             name=f"NYC Street Parking - {regulation.get('street_name', 'Unknown')}",
-                            description=regulation.get(
-                                "sign_description", "Street parking"
-                            ),
+                            description=regulation.get("sign_description", "Street parking"),
                             latitude=float(regulation["latitude"]),
                             longitude=float(regulation["longitude"]),
                             address=f"{regulation.get('street_name', '')} {regulation.get('from_street', '')}".strip(),
@@ -240,9 +232,7 @@ class SpotHeroAPI:
 
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    f"{self.base_url}/spots/search", params=params, headers=headers
-                )
+                response = await client.get(f"{self.base_url}/spots/search", params=params, headers=headers)
                 response.raise_for_status()
                 data = response.json()
 
@@ -303,11 +293,7 @@ class ParkingAPIAggregator:
 
         # Google Places API
         if self.google_api:
-            tasks.append(
-                self.google_api.search_parking_near_location(
-                    latitude, longitude, radius
-                )
-            )
+            tasks.append(self.google_api.search_parking_near_location(latitude, longitude, radius))
 
         # NYC Open Data (only for NYC area roughly)
         if 40.4774 <= latitude <= 40.9176 and -74.2591 <= longitude <= -73.7004:
@@ -315,11 +301,7 @@ class ParkingAPIAggregator:
 
         # SpotHero API
         if self.spothero_api and start_time and end_time:
-            tasks.append(
-                self.spothero_api.search_parking(
-                    latitude, longitude, start_time, end_time, radius
-                )
-            )
+            tasks.append(self.spothero_api.search_parking(latitude, longitude, start_time, end_time, radius))
 
         # Execute all API calls concurrently
         if tasks:
@@ -335,9 +317,7 @@ class ParkingAPIAggregator:
         unique_parking = self._deduplicate_parking_spaces(all_parking)
         return self._sort_by_distance(unique_parking, latitude, longitude)
 
-    def _deduplicate_parking_spaces(
-        self, parking_spaces: list[ParkingSpace]
-    ) -> list[ParkingSpace]:
+    def _deduplicate_parking_spaces(self, parking_spaces: list[ParkingSpace]) -> list[ParkingSpace]:
         """Remove duplicate parking spaces from different sources"""
         unique_spaces = {}
 
@@ -346,22 +326,16 @@ class ParkingAPIAggregator:
             key = (round(space.latitude, 4), round(space.longitude, 4))
 
             # Keep the space with the most complete data
-            if key not in unique_spaces or len(space.features) > len(
-                unique_spaces[key].features
-            ):
+            if key not in unique_spaces or len(space.features) > len(unique_spaces[key].features):
                 unique_spaces[key] = space
 
         return list(unique_spaces.values())
 
-    def _sort_by_distance(
-        self, parking_spaces: list[ParkingSpace], latitude: float, longitude: float
-    ) -> list[ParkingSpace]:
+    def _sort_by_distance(self, parking_spaces: list[ParkingSpace], latitude: float, longitude: float) -> list[ParkingSpace]:
         """Sort parking spaces by distance from coordinates"""
 
         def distance_key(space):
-            return (
-                (space.latitude - latitude) ** 2 + (space.longitude - longitude) ** 2
-            ) ** 0.5
+            return ((space.latitude - latitude) ** 2 + (space.longitude - longitude) ** 2) ** 0.5
 
         return sorted(parking_spaces, key=distance_key)
 

@@ -38,9 +38,7 @@ def add_bay_area_spaces():
                 verified_only=space.get("verified_only", False),
             )
             count += 1
-            print(
-                f"✓ Added: {space['title']} (ID: {place_id}) - ${space['price_per_hour']}/hr"
-            )
+            print(f"✓ Added: {space['title']} (ID: {place_id}) - ${space['price_per_hour']}/hr")
         except Exception as e:
             if "UNIQUE constraint failed" not in str(e):
                 print(f"⚠ Failed to add {space['title']}: {e}")

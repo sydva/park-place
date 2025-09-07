@@ -439,21 +439,15 @@ def add_more_spaces():
             if "UNIQUE constraint failed" not in str(e):
                 print(f"⚠ Failed to add {space['title']}: {e}")
 
-    print(
-        f"\\n🎉 Added {basic_count} basic spaces and {premium_count} public premium spaces!"
-    )
+    print(f"\\n🎉 Added {basic_count} basic spaces and {premium_count} public premium spaces!")
     print(f"Total places now: {db.get_place_count()}")
 
     # Show new distribution
     print("\\n📊 New Distribution:")
     with db.get_db() as conn:
-        cursor = conn.execute(
-            "SELECT COUNT(*) FROM places WHERE price_per_hour <= 5 AND verified_only = 0"
-        )
+        cursor = conn.execute("SELECT COUNT(*) FROM places WHERE price_per_hour <= 5 AND verified_only = 0")
         public_basic = cursor.fetchone()[0]
-        cursor = conn.execute(
-            "SELECT COUNT(*) FROM places WHERE price_per_hour >= 15 AND verified_only = 0"
-        )
+        cursor = conn.execute("SELECT COUNT(*) FROM places WHERE price_per_hour >= 15 AND verified_only = 0")
         public_premium = cursor.fetchone()[0]
         cursor = conn.execute("SELECT COUNT(*) FROM places WHERE verified_only = 1")
         verified_only = cursor.fetchone()[0]
@@ -461,9 +455,7 @@ def add_more_spaces():
     print(f"  • Basic public spaces ($0-5): {public_basic}")
     print(f"  • Premium public spaces ($15+): {public_premium}")
     print(f"  • Verified-only spaces: {verified_only}")
-    print(
-        "\\nNow unverified users will see lots of basic spaces AND public premium spaces!"
-    )
+    print("\\nNow unverified users will see lots of basic spaces AND public premium spaces!")
 
 
 if __name__ == "__main__":

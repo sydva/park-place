@@ -21,7 +21,6 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 
-
 # TypedDict for booking data
 class BookingData(TypedDict):
     id: int
@@ -469,11 +468,7 @@ async def search_spaces(query: SearchQuery):
         tags = []
         if place.get("tags"):
             try:
-                tags = (
-                    json.loads(place["tags"])
-                    if isinstance(place["tags"], str)
-                    else place["tags"]
-                )
+                tags = json.loads(place["tags"]) if isinstance(place["tags"], str) else place["tags"]
             except (json.JSONDecodeError, TypeError):
                 tags = []
 
@@ -740,9 +735,7 @@ async def create_booking(booking: Booking, background_tasks: BackgroundTasks):
     # Schedule a rating reminder shortly after end_time (MVP: send immediately if in past)
     max(0, int((booking.end_time - datetime.utcnow()).total_seconds()))
     # Using background task without actual delay for simplicity; in production use a scheduler
-    background_tasks.add_task(
-        send_rating_reminder, current_user["email"], booking.space_id
-    )
+    background_tasks.add_task(send_rating_reminder, current_user["email"], booking.space_id)
 
     return BookingResponse(
         id=booking_id,

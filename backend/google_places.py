@@ -26,9 +26,7 @@ class GooglePlacesAPI:
     def __init__(self):
         self.api_key = os.getenv("GOOGLE_PLACES_API_KEY")
         if not self.api_key:
-            print(
-                "Warning: GOOGLE_PLACES_API_KEY not set. Google Places integration disabled."
-            )
+            print("Warning: GOOGLE_PLACES_API_KEY not set. Google Places integration disabled.")
             self.api_key = None
 
     async def import_parking_near_location(
@@ -76,9 +74,7 @@ class GooglePlacesAPI:
                     full_address = details.get("formatted_address", address)
 
                     # Check if we already have this place (by approximate location)
-                    existing = db.search_places_by_location(
-                        lat, lng, 0.05
-                    )  # 50m radius
+                    existing = db.search_places_by_location(lat, lng, 0.05)  # 50m radius
                     if existing:
                         continue  # Skip duplicates
 
@@ -131,7 +127,7 @@ class GooglePlacesAPI:
                 response = await client.get(url, params=params)
                 response.raise_for_status()
                 return response.json().get("result", {})
-        except:
+        except Exception:
             return {}
 
     def _estimate_price(self, place: dict[str, Any], details: dict[str, Any]) -> float:
@@ -157,9 +153,7 @@ class GooglePlacesAPI:
         else:
             return 1.0
 
-    def _extract_features(
-        self, place: dict[str, Any], details: dict[str, Any]
-    ) -> list[str]:
+    def _extract_features(self, place: dict[str, Any], details: dict[str, Any]) -> list[str]:
         """Extract features from Google Places data"""
         features = []
 
@@ -186,9 +180,7 @@ class GooglePlacesAPI:
         return features
 
 
-async def import_google_places_parking(
-    latitude: float, longitude: float, radius: int = 2000
-):
+async def import_google_places_parking(latitude: float, longitude: float, radius: int = 2000):
     """
     Helper function to import parking from Google Places API
     Usage: python -c "import asyncio; from google_places import import_google_places_parking; asyncio.run(import_google_places_parking(37.7749, -122.4194))"
@@ -199,9 +191,7 @@ async def import_google_places_parking(
         return
 
     spaces_added = await api.import_parking_near_location(latitude, longitude, radius)
-    print(
-        f"\n🎉 Import complete! Added {spaces_added} parking spaces from Google Places"
-    )
+    print(f"\n🎉 Import complete! Added {spaces_added} parking spaces from Google Places")
 
 
 if __name__ == "__main__":

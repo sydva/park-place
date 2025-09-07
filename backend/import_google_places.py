@@ -31,15 +31,11 @@ async def main():
             if len(sys.argv) >= 4:
                 radius = int(sys.argv[3])
         except (ValueError, IndexError):
-            print(
-                "Usage: python import_google_places.py [latitude] [longitude] [radius]"
-            )
+            print("Usage: python import_google_places.py [latitude] [longitude] [radius]")
             print("Example: python import_google_places.py 37.7749 -122.4194 2000")
             sys.exit(1)
 
-    print(
-        f"Importing parking spaces near ({latitude}, {longitude}) within {radius}m..."
-    )
+    print(f"Importing parking spaces near ({latitude}, {longitude}) within {radius}m...")
 
     # Run the import
     await import_google_places_parking(latitude, longitude, radius)
