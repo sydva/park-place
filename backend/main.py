@@ -5,7 +5,8 @@ from pathlib import Path as FilePath
 from typing import Annotated, Any, TypedDict
 
 import anyio
-import database as db
+from backend import database as db
+from email_service import EmailService
 from fastapi import (
     BackgroundTasks,
     FastAPI,
@@ -19,6 +20,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr, Field, ValidationInfo, field_validator
+from verification_service import DocumentVerificationService
 
 
 # TypedDict for booking data
@@ -40,6 +42,10 @@ next_booking_id = 1
 # Image upload configuration
 UPLOAD_DIR = FilePath("./uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
+
+# Initialize services
+email_service = EmailService()
+verification_service = DocumentVerificationService()
 
 # Temporary current user for development
 DEV_USER: dict[str, Any] = {
@@ -912,6 +918,24 @@ async def upload_verification_documents(
             with open(file_path, "wb") as f:
                 f.write(contents)
 
+        # Get the user's profile to find their entered license plate
+        user_profile = db.get_user_by_email(user_email)
+        if not user_profile:
+            raise HTTPException(status_code=404, detail="User profile not found")
+        
+        # Get the entered license plate (combine state + plate if available)
+        entered_license_plate = ""
+        if user_profile.get("license_plate_state") and user_profile.get("license_plate"):
+            entered_license_plate = f"{user_profile['license_plate_state']}{user_profile['license_plate']}"
+        elif user_profile.get("license_plate"):
+            entered_license_plate = user_profile["license_plate"]
+        
+        if not entered_license_plate:
+            raise HTTPException(
+                status_code=400, 
+                detail="Please add your license plate to your profile before submitting verification documents"
+            )
+
         # Create verification record in database
         verification_id = db.create_user_verification(
             user_email=user_email,
@@ -920,19 +944,75 @@ async def upload_verification_documents(
             vehicle_registration_url=f"/uploads/{vehicle_reg_filename}",
         )
 
-        # Send notification to user
-        db.create_notification(
-            user_email=user_email,
-            title="Verification Documents Submitted",
-            message="Your verification documents have been submitted for review. You will be notified once the review is complete.",
-            notification_type="info",
+        # Run automated verification using Claude
+        verification_result = await verification_service.verify_documents(
+            profile_photo_path=str(UPLOAD_DIR / profile_photo_filename),
+            id_document_path=str(UPLOAD_DIR / id_document_filename),
+            vehicle_registration_path=str(UPLOAD_DIR / vehicle_reg_filename),
+            entered_license_plate=entered_license_plate,
         )
 
-        return {
-            "message": "Verification documents uploaded successfully",
-            "verification_id": verification_id,
-            "status": "pending",
-        }
+        # Update verification status based on AI result
+        if verification_result.is_verified:
+            # Mark as verified
+            db.update_verification_status(
+                user_email=user_email,
+                status="verified",
+                verified_by="ai_system",
+                verification_notes="Automatically verified by AI system",
+            )
+            # Update user's verified status
+            db.update_user(user_email, is_verified=True)
+            
+            # Send success email
+            await email_service.send_verification_approved_email(
+                user_email, 
+                user_profile.get("username", "")
+            )
+            
+            # Send in-app notification
+            db.create_notification(
+                user_email=user_email,
+                title="Verification Approved",
+                message="Congratulations! Your identity has been verified. You now have access to verified-only parking spaces.",
+                notification_type="info",
+            )
+            
+            return {
+                "message": "Verification completed successfully - you are now verified!",
+                "verification_id": verification_id,
+                "status": "verified",
+            }
+        else:
+            # Mark as rejected
+            db.update_verification_status(
+                user_email=user_email,
+                status="rejected",
+                verified_by="ai_system",
+                verification_notes=f"Automated verification failed: {verification_result.details}",
+            )
+            
+            # Send rejection email
+            await email_service.send_verification_rejected_email(
+                user_email, 
+                user_profile.get("username", ""),
+                verification_result.details
+            )
+            
+            # Send in-app notification
+            db.create_notification(
+                user_email=user_email,
+                title="Verification Requires Updates",
+                message=f"Your verification could not be completed. Please review and resubmit your documents. Details: {verification_result.details}",
+                notification_type="warning",
+            )
+            
+            return {
+                "message": "Verification could not be completed. Please check your email for details.",
+                "verification_id": verification_id,
+                "status": "rejected",
+                "details": verification_result.details,
+            }
 
     except HTTPException:
         raise
