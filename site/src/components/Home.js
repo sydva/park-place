@@ -1,78 +1,40 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react';
+import './Home.css';
 
 function Home() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <div style={{ position: 'absolute', top: 20, right: 20 }}>
-          <SignedOut>
-            <SignInButton />
-          </SignedOut>
+    <div className="home">
+      <div className="home-hero">
+        <div className="home-topbar">
           <SignedIn>
             <UserButton />
           </SignedIn>
         </div>
-        
-        <h1>🏠 Park Place</h1>
-        <p>
-          Your marketplace for overnight parking
-        </p>
-        
+
+        <h1 className="home-title">Park Place</h1>
+        <p className="home-tagline">Yes in my driveway.</p>
+        <p className="home-tagline">Your marketplace for overnight parking.</p>
+
         <SignedIn>
-          <nav style={{ margin: '20px 0', display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-            <Link 
-              to="/map" 
-              style={{ 
-                color: '#61dafb', 
-                textDecoration: 'none',
-                fontSize: '18px',
-                padding: '10px 20px',
-                border: '2px solid #61dafb',
-                borderRadius: '5px',
-                display: 'inline-block'
-              }}
-            >
-              View Map
-            </Link>
-            <Link 
-              to="/add-parking-space" 
-              style={{ 
-                color: '#61dafb', 
-                textDecoration: 'none',
-                fontSize: '18px',
-                padding: '10px 20px',
-                border: '2px solid #61dafb',
-                borderRadius: '5px',
-                display: 'inline-block'
-              }}
-            >
-              Add Parking Space
-            </Link>
-            <Link 
-              to="/report-license-plate" 
-              style={{ 
-                color: '#61dafb', 
-                textDecoration: 'none',
-                fontSize: '18px',
-                padding: '10px 20px',
-                border: '2px solid #61dafb',
-                borderRadius: '5px',
-                display: 'inline-block'
-              }}
-            >
-              Report License Plate
-            </Link>
+          <nav className="home-actions">
+            <Link to="/map" className="btn-primary">View Map</Link>
+            <Link to="/add-parking-space" className="btn-outline">Add Parking Space</Link>
+            <Link to="/report-license-plate" className="btn-outline">Report License Plate</Link>
           </nav>
         </SignedIn>
-        
+
         <SignedOut>
-          <p style={{ marginTop: '40px' }}>
-            Please sign in to access Park Place features.
-          </p>
+          <div className="home-actions">
+            <SignInButton mode="modal">
+              <button className="btn-primary">Get Started</button>
+            </SignInButton>
+            <Link to="/browse" className="btn-outline">Browse without signing in</Link>
+          </div>
+          <p className="home-note">Sign in to explore nearby spaces and list your own.</p>
         </SignedOut>
-      </header>
+      </div>
     </div>
   );
 }

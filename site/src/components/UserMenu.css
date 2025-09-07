@@ -254,3 +254,71 @@
 .cancel-btn:hover {
   background: #ff3742;
 }
+
+/* Units toggle styles */
+.toggle-item {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.units-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: 8px;
+}
+
+.units-toggle span {
+  font-size: 14px;
+  color: #666;
+  transition: color 0.2s ease;
+}
+
+.units-toggle span.active {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 50px;
+  height: 24px;
+  background: #ddd;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  outline: none;
+}
+
+.toggle-switch:hover {
+  background: #ccc;
+}
+
+.toggle-switch:focus {
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.3);
+}
+
+.toggle-slider {
+  position: absolute;
+  top: 2px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-slider.imperial {
+  transform: translateX(2px);
+}
+
+.toggle-slider.metric {
+  transform: translateX(26px);
+}
+
+.toggle-switch:hover .toggle-slider {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}

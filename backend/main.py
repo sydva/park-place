@@ -47,6 +47,7 @@ class UserRegister(BaseModel):
     name: str = Field(..., min_length=1)
     user_type: str = "parker"  # parker, provider, both
     car_license_plate: str | None = None
+    units_preference: str | None = Field(None, pattern="^(imperial|metric)$")
 
 
 class UserResponse(BaseModel):
@@ -326,6 +327,7 @@ async def get_user_profile(email: str):
         "user_type": user["user_type"],
         "license_plate": user.get("license_plate"),
         "license_plate_state": user.get("license_plate_state"),
+        "units_preference": user.get("units_preference"),
         "is_active": user["is_active"],
         "is_verified": user.get("is_verified", False),
         "created_at": user["created_at"],
@@ -354,6 +356,7 @@ async def update_user_profile(user_data: UserRegister):
             username=user_data.name,
             license_plate=license_plate_number,
             license_plate_state=license_plate_state,
+            units_preference=user_data.units_preference,
         )
         
         if not success:
@@ -368,6 +371,7 @@ async def update_user_profile(user_data: UserRegister):
             "user_type": updated_user["user_type"],
             "license_plate": updated_user.get("license_plate"),
             "license_plate_state": updated_user.get("license_plate_state"),
+            "units_preference": updated_user.get("units_preference"),
             "is_active": updated_user["is_active"],
             "created_at": updated_user["created_at"],
         }

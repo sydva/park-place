@@ -9,10 +9,10 @@ import AddParkingSpace from './components/AddParkingSpace';
 import ProtectedRoute from './components/ProtectedRoute';
 import CompleteRegistration from './components/CompleteRegistration';
 import EditProfile from './components/EditProfile';
-import MyBookings from './components/MyBookings';
 import AuthLayout from './components/AuthLayout';
 import Terms from './components/Terms';
 import Privacy from './components/Privacy';
+import { PreferencesProvider } from './contexts/PreferencesContext';
 
 function AppRoutes() {
   const { isSignedIn, isLoaded } = useAuth();
@@ -51,6 +51,7 @@ function AppRoutes() {
       />
       <Route path="/complete-registration" element={<CompleteRegistration />} />
       <Route path="/map" element={<ProtectedRoute><Map /></ProtectedRoute>} />
+      <Route path="/browse" element={<Map />} />
       <Route 
         path="/edit-profile" 
         element={<ProtectedRoute><EditProfile /></ProtectedRoute>} 
@@ -65,10 +66,6 @@ function AppRoutes() {
         path="/add-parking-space" 
         element={<ProtectedRoute><AddParkingSpace /></ProtectedRoute>} 
       />
-      <Route 
-        path="/my-bookings" 
-        element={<ProtectedRoute><MyBookings /></ProtectedRoute>} 
-      />
     </Routes>
   );
 }
@@ -76,7 +73,9 @@ function AppRoutes() {
 function App() {
   return (
     <Router>
-      <AppRoutes />
+      <PreferencesProvider>
+        <AppRoutes />
+      </PreferencesProvider>
     </Router>
   );
 }

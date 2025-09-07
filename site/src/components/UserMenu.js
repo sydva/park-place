@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useUser, useClerk } from '@clerk/clerk-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { useUser, useClerk, SignInButton } from '@clerk/clerk-react';
 import apiService from '../services/api';
 import './UserMenu.css';
 import Icon from './Icon';
+import { usePreferences } from '../contexts/PreferencesContext';
 
 const UserMenu = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -17,6 +18,7 @@ const UserMenu = () => {
   const navigate = useNavigate();
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
+  const { unitsPreference, setUnitsPreference } = usePreferences();
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -91,14 +93,31 @@ const UserMenu = () => {
 
   const startEditing = (field, currentValue) => {
     setEditingField(field);
-    setEditValue(currentValue || '');
-    setEditState('');
+    if (field === 'license_plate' && currentValue) {
+      // Parse existing license plate to separate state and number
+      const state = currentValue.length >= 2 ? currentValue.substring(0, 2) : '';
+      const number = currentValue.length >= 2 ? currentValue.substring(2) : currentValue;
+      setEditState(state);
+      setEditValue(number);
+    } else {
+      setEditValue(currentValue || '');
+      setEditState('');
+    }
   };
 
   const cancelEditing = () => {
     setEditingField(null);
     setEditValue('');
     setEditState('');
+  };
+
+  const handleUnitsToggle = async () => {
+    const newUnits = unitsPreference === 'imperial' ? 'metric' : 'imperial';
+    try {
+      await setUnitsPreference(newUnits);
+    } catch (error) {
+      console.error('Failed to update units preference:', error);
+    }
   };
 
   const saveField = async () => {
@@ -115,7 +134,8 @@ const UserMenu = () => {
       if (editingField === 'username') {
         updateData.name = editValue.trim();
       } else if (editingField === 'license_plate') {
-        updateData.car_license_plate = editValue.trim() || null;
+        const fullPlate = editState && editValue ? `${editState}${editValue}`.trim() : editValue.trim();
+        updateData.car_license_plate = fullPlate || null;
       }
 
       await apiService.updateProfile(updateData);
@@ -148,6 +168,9 @@ const UserMenu = () => {
               <div className="menu-item">Loading...</div>
             ) : user ? (
               <>
+                <div className="menu-item">
+                  <strong>Name:</strong> {user.fullName || user.firstName || 'Unknown'}
+                </div>
                 <div className="menu-item">
                   <strong>Email:</strong> {user.primaryEmailAddress?.emailAddress}
                 </div>
@@ -188,7 +211,17 @@ const UserMenu = () => {
                     <div className="menu-item editable-item">
                       <strong>License Plate:</strong>
                       {editingField === 'license_plate' ? (
-                        <div className="inline-edit">
+                        <div className="inline-edit license-edit">
+                          <select
+                            value={editState}
+                            onChange={(e) => setEditState(e.target.value)}
+                            className="edit-select"
+                          >
+                            <option value="">State</option>
+                            {['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'].map(state => (
+                              <option key={state} value={state}>{state}</option>
+                            ))}
+                          </select>
                           <input
                             type="text"
                             value={editValue}
@@ -204,7 +237,9 @@ const UserMenu = () => {
                       ) : (
                         <div className="field-display">
                           <span>
-                            {dbUserProfile.license_plate || 'Not set'}
+                            {dbUserProfile.license_plate ? 
+                              `${dbUserProfile.license_plate_state || ''}${dbUserProfile.license_plate_state ? '-' : ''}${dbUserProfile.license_plate}` : 
+                              'Not set'}
                           </span>
                           <button 
                             className="edit-icon"
@@ -223,6 +258,24 @@ const UserMenu = () => {
                         {dbUserProfile.is_verified ? '✓ Verified User' : '⚠ Unverified'}
                       </span>
                     </div>
+                    <div className="menu-item toggle-item">
+                      <strong>Distance Units:</strong>
+                      <div className="units-toggle">
+                        <span className={unitsPreference === 'imperial' ? 'active' : ''}>
+                          Feet/Miles
+                        </span>
+                        <button 
+                          className="toggle-switch" 
+                          onClick={handleUnitsToggle}
+                          aria-label={`Switch to ${unitsPreference === 'imperial' ? 'metric' : 'imperial'} units`}
+                        >
+                          <div className={`toggle-slider ${unitsPreference}`}></div>
+                        </button>
+                        <span className={unitsPreference === 'metric' ? 'active' : ''}>
+                          Meters/Km
+                        </span>
+                      </div>
+                    </div>
                   </>
                 ) : (
                   <>
@@ -237,30 +290,38 @@ const UserMenu = () => {
                     </div>
                   </>
                 )}
+                {/* Authenticated actions */}
+                <button className="menu-action-button" onClick={handleEditProfile}>
+                  Edit Profile
+                </button>
+                {dbUserProfile && !dbUserProfile.is_verified && (
+                  <button className="menu-action-button verify-button" onClick={handleVerifyIdentity}>
+                    <Icon name="lock" size={14} /> Get Verified
+                  </button>
+                )}
+                <button className="menu-action-button" onClick={handleReportLicensePlate}>
+                  Report License Plate
+                </button>
+                <button className="menu-action-button" onClick={handleAddParkingSpace}>
+                  Add New Parking Space
+                </button>
+                <button className="logout-button" onClick={handleLogout}>
+                  Logout
+                </button>
               </>
             ) : (
-              <div className="menu-item">Not signed in</div>
+              <>
+                <div className="menu-item">Not signed in</div>
+                <SignInButton mode="modal">
+                  <button className="menu-action-button">Sign In</button>
+                </SignInButton>
+              </>
             )}
-            <button className="menu-action-button" onClick={handleEditProfile}>
-              Edit Profile
-            </button>
-            {dbUserProfile && !dbUserProfile.is_verified && (
-              <button className="menu-action-button verify-button" onClick={handleVerifyIdentity}>
-                <Icon name="lock" size={14} /> Get Verified
-              </button>
-            )}
-            <button className="menu-action-button" onClick={handleReportLicensePlate}>
-              Report License Plate
-            </button>
-            <button className="menu-action-button" onClick={handleAddParkingSpace}>
-              Add New Parking Space
-            </button>
-            <button className="menu-action-button" onClick={() => { setIsOpen(false); navigate('/my-bookings'); }}>
-              My Bookings
-            </button>
-            <button className="logout-button" onClick={handleLogout}>
-              Logout
-            </button>
+            <div style={{ marginTop: '10px', fontSize: '11px', color: '#90a4ae', textAlign: 'center' }}>
+              <Link to="/terms" style={{ color: 'inherit', textDecoration: 'none', marginRight: '8px' }}>Terms</Link>
+              ·
+              <Link to="/privacy" style={{ color: 'inherit', textDecoration: 'none', marginLeft: '8px' }}>Privacy</Link>
+            </div>
           </div>
         </div>
       )}

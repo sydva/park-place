@@ -17,7 +17,13 @@ const AuthLayout = ({ children }) => {
         <div className="car" />
       </div>
       <div className="auth-content">
-        {children}
+        <div className="auth-header">
+          <h1 className="brand">Park Place</h1>
+          <p className="tagline">Yes in my driveway.</p>
+        </div>
+        <div className="auth-card">
+          {children}
+        </div>
       </div>
     </div>
   );

@@ -152,6 +152,22 @@ def init_database():
                 "ALTER TABLE users ADD COLUMN user_type TEXT DEFAULT 'parker' CHECK(user_type IN ('parker', 'provider', 'both'))"
             )
 
+        # Add tags column to places table if it doesn't exist
+        cursor.execute("PRAGMA table_info(places)")
+        places_columns = [column[1] for column in cursor.fetchall()]
+        if "tags" not in places_columns:
+            conn.execute(
+                "ALTER TABLE places ADD COLUMN tags TEXT DEFAULT '[]'"
+            )
+
+        # Add units_preference column to users table if it doesn't exist
+        cursor.execute("PRAGMA table_info(users)")
+        users_columns = [column[1] for column in cursor.fetchall()]
+        if "units_preference" not in users_columns:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN units_preference TEXT DEFAULT 'imperial' CHECK(units_preference IN ('metric', 'imperial'))"
+            )
+
         conn.commit()
 
 
@@ -246,6 +262,7 @@ def update_user(
     license_plate_state: str | None = None,
     user_type: str | None = None,
     is_verified: bool | None = None,
+    units_preference: str | None = None,
 ) -> bool:
     """Update user profile by email"""
     # Build the SET clause dynamically based on provided parameters
@@ -267,6 +284,9 @@ def update_user(
     if is_verified is not None:
         updates.append("is_verified = ?")
         params.append(is_verified)
+    if units_preference is not None:
+        updates.append("units_preference = ?")
+        params.append(units_preference)
     
     if not updates:
         return True  # No updates requested
@@ -291,18 +311,33 @@ def create_place(
     longitude: float | None = None,
     address: str | None = None,
     price_per_hour: float = 0.0,
+    tags: list[str] | None = None,
 ) -> int:
     """Create a new place and return the place ID"""
+    import json
+    tags_json = json.dumps(tags or [])
+    
     with get_db() as conn:
         cursor = conn.execute(
             """
             INSERT INTO places (title, description, added_by, creator_is_owner,
-                latitude, longitude, address, price_per_hour)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                latitude, longitude, address, price_per_hour, tags)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-            (title, description, added_by, creator_is_owner, latitude, longitude, address, price_per_hour),
+            (title, description, added_by, creator_is_owner, latitude, longitude, address, price_per_hour, tags_json),
         )
         return cursor.lastrowid or 0
+
+
+def _parse_place_tags(place_dict: dict[str, Any]) -> dict[str, Any]:
+    """Helper function to parse tags JSON in place records"""
+    import json
+    if place_dict and 'tags' in place_dict:
+        try:
+            place_dict['tags'] = json.loads(place_dict['tags'])
+        except (json.JSONDecodeError, TypeError):
+            place_dict['tags'] = []
+    return place_dict
 
 
 def get_place_by_id(place_id: int) -> dict[str, Any] | None:
@@ -325,7 +360,7 @@ def get_place_by_id(place_id: int) -> dict[str, Any] | None:
             result = dict(row)
             # Convert to proper types
             result['average_rating'] = float(result['average_rating']) if result['rating_count'] > 0 else None
-            return result
+            return _parse_place_tags(result)
         return None
 
 
@@ -352,7 +387,7 @@ def get_places_by_creator(
         for row in cursor.fetchall():
             result = dict(row)
             result['average_rating'] = float(result['average_rating']) if result['rating_count'] > 0 else None
-            results.append(result)
+            results.append(_parse_place_tags(result))
         return results
 
 
@@ -379,7 +414,7 @@ def get_places_by_owner(
         for row in cursor.fetchall():
             result = dict(row)
             result['average_rating'] = float(result['average_rating']) if result['rating_count'] > 0 else None
-            results.append(result)
+            results.append(_parse_place_tags(result))
         return results
 
 
@@ -404,7 +439,7 @@ def get_published_places(skip: int = 0, limit: int = 100) -> list[dict[str, Any]
         for row in cursor.fetchall():
             result = dict(row)
             result['average_rating'] = float(result['average_rating']) if result['rating_count'] > 0 else None
-            results.append(result)
+            results.append(_parse_place_tags(result))
         return results
 
 
@@ -439,7 +474,7 @@ def search_places_by_location(
         for row in cursor.fetchall():
             result = dict(row)
             result['average_rating'] = float(result['average_rating']) if result['rating_count'] > 0 else None
-            results.append(result)
+            results.append(_parse_place_tags(result))
         return results
 
 
