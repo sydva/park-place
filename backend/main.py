@@ -51,11 +51,23 @@ DEV_USER: dict[str, Any] = {
 
 
 class UserRegister(BaseModel):
-    email: str = Field(..., min_length=1)
-    name: str = Field(..., min_length=1)
+    email: str = Field(..., min_length=1, max_length=254)
+    name: str = Field(..., min_length=1, max_length=100)
     user_type: str = "parker"  # parker, provider, both
     car_license_plate: str | None = None
     units_preference: str | None = Field(None, pattern="^(imperial|metric)$")
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def validate_email(cls, v: Any) -> str:
+        if not isinstance(v, str):
+            raise ValueError("Email must be a string")
+        # Basic ASCII check to prevent unicode issues
+        try:
+            v.encode("ascii")
+        except UnicodeEncodeError:
+            raise ValueError("Email must contain only ASCII characters") from None
+        return v
 
 
 class UserResponse(BaseModel):
@@ -145,9 +157,9 @@ class SearchQuery(BaseModel):
 
 
 class ReportLicensePlate(BaseModel):
-    license_plate: str
-    space_id: int | None = None
-    description: str
+    license_plate: str = Field(..., min_length=1)
+    space_id: int | None = Field(None, ge=1, le=2147483647)
+    description: str = Field(..., min_length=1)
     reporter_email: str | None = None
 
 
@@ -173,7 +185,7 @@ class VerificationStatusUpdate(BaseModel):
 
 
 class CreateUserRating(BaseModel):
-    ratee_id: int
+    ratee_id: int = Field(..., ge=1, le=2147483647)
     rating: int = Field(..., ge=1, le=5)
     description: str | None = None
 
@@ -191,7 +203,7 @@ class CreateUserRating(BaseModel):
 
 
 class CreatePlaceRating(BaseModel):
-    place_id: int
+    place_id: int = Field(..., ge=1, le=2147483647)
     rating: int = Field(..., ge=1, le=5)
     description: str | None = None
 
@@ -355,7 +367,7 @@ async def get_me():
     )
 
 
-@app.get("/users/profile")
+@app.get("/users/profile", responses={404: {"description": "User not found"}})
 async def get_user_profile(email: str):
     """Get user profile by email from database"""
     user = db.get_user_by_email(email)
@@ -376,7 +388,7 @@ async def get_user_profile(email: str):
     }
 
 
-@app.put("/users/update-profile")
+@app.put("/users/update-profile", responses={404: {"description": "User not found"}})
 async def update_user_profile(user_data: UserRegister):
     """Update user profile by email"""
     try:
@@ -599,7 +611,7 @@ async def update_space(space_id: Annotated[int, Path(ge=0, le=2147483647)], spac
 
     return ParkingSpaceResponse(
         id=updated_place["id"],
-        owner_id=updated_place["owned_by"] or updated_place["added_by"],
+        owner_id=updated_place["added_by"],
         title=updated_place["title"],
         description=updated_place["description"],
         lat=updated_place["latitude"] or 0.0,
@@ -845,7 +857,7 @@ async def get_reports():
         raise HTTPException(status_code=500, detail="Failed to get reports") from e
 
 
-@app.post("/verification/upload", response_model=dict)
+@app.post("/verification/upload", response_model=dict, responses={400: {"description": "Bad request"}})
 async def upload_verification_documents(
     profile_photo: UploadFile = File(...),
     id_document: UploadFile = File(...),
@@ -1088,7 +1100,7 @@ async def create_place_rating(rating: CreatePlaceRating):
 
 
 @app.get("/ratings/places/{place_id}")
-async def get_place_ratings(place_id: int):
+async def get_place_ratings(place_id: int = Path(..., ge=1, le=2147483647)):
     """Get all ratings for a specific place"""
     try:
         ratings = db.get_place_ratings(place_id)
@@ -1103,7 +1115,7 @@ async def get_place_ratings(place_id: int):
 
 
 @app.get("/ratings/users/{user_id}")
-async def get_user_ratings(user_id: int):
+async def get_user_ratings(user_id: int = Path(..., ge=1, le=2147483647)):
     """Get all ratings for a specific user"""
     try:
         ratings = db.get_user_ratings_by_ratee(user_id)
