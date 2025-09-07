@@ -15,6 +15,12 @@ let's go with simple neobrutalist design, similar to the monopoly board game. Si
 
 ## Setup Instructions
 
+**Backend Setup:**
+   - Uses `uv` for Python package management (not pip)
+   - Python 3.12+ required (configured in pyproject.toml)
+   - `uv venv --python 3.12` to create virtual environment
+   - `source .venv/bin/activate && uv pip install -r requirements.txt`
+
  **Frontend Setup:**
    - `cp site/.env.example site/.env` and add keys
 
@@ -22,6 +28,7 @@ let's go with simple neobrutalist design, similar to the monopoly board game. Si
 
 - **Frontend:** React with Clerk.dev authentication
 - **Backend:** FastAPI with SQLite database
+- look at backend/CLAUDE.md for instructions on how to run and test backend
 - **Authentication:** Clerk.dev handles all auth flows
 - **Protected Routes:** Map, Add Parking Space, Report License Plate
 
