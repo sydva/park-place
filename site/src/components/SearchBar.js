@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { searchTags, getAllTags } from '../data/parkingTags';
-import { searchLocations, debounce } from '../services/geocoding';
+import { useEffect, useRef, useState } from 'react';
+import { searchTags } from '../data/parkingTags';
+import { debounce, searchLocations } from '../services/geocoding';
 import Icon from './Icon';
 import './SearchBar.css';
 
@@ -32,7 +32,7 @@ const SearchBar = ({ onLocationSearch, onAmenityFilter, onFilterClick }) => {
           lat: result.lat,
           lng: result.lng
         }));
-        
+
         setSuggestions(formattedResults.slice(0, 5));
         setShowSuggestions(true);
       } catch (error) {
@@ -55,9 +55,9 @@ const SearchBar = ({ onLocationSearch, onAmenityFilter, onFilterClick }) => {
     // Search both locations and amenities simultaneously
     const searchBoth = async () => {
       setIsLoading(true);
-      
+
       // Get location suggestions (if 3+ chars)
-      const locationPromise = searchValue.length >= 3 
+      const locationPromise = searchValue.length >= 3
         ? searchLocations(searchValue).then(results => results.map(result => ({
             type: 'location',
             name: result.name,
@@ -81,12 +81,12 @@ const SearchBar = ({ onLocationSearch, onAmenityFilter, onFilterClick }) => {
 
       try {
         const [locationResults, amenityResults] = await Promise.all([locationPromise, amenityPromise]);
-        
+
         // Combine results, prioritizing locations for longer queries
-        const combined = searchValue.length >= 3 
+        const combined = searchValue.length >= 3
           ? [...locationResults.slice(0, 3), ...amenityResults.slice(0, 2)]
           : amenityResults.slice(0, 5);
-        
+
         setSuggestions(combined);
         setShowSuggestions(combined.length > 0);
       } catch (error) {
@@ -167,77 +167,73 @@ const SearchBar = ({ onLocationSearch, onAmenityFilter, onFilterClick }) => {
   };
 
   return (
-    <div className="search-bar-container">
-      <div className="search-bar">
-        <div className="search-input-container">
-          <form onSubmit={handleFormSubmit} className="search-form">
-            <div className="search-input-wrapper">
-              <input
-                ref={inputRef}
-                type="text"
-                value={searchValue}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
-                onFocus={handleFocus}
-                placeholder="Search locations or amenities..."
-                className="search-input"
-              />
-              {searchValue && (
-                <button type="button" className="clear-search-btn" onClick={clearSearch}>
-                  ✕
-                </button>
-              )}
-              <button type="button" className="filter-inline-btn" onClick={onFilterClick} aria-label="Open filters">
-                <Icon name="filter" size={16} />
-              </button>
-              <button type="submit" className="submit-search-btn" aria-label="Search">
-                <Icon name="search" size={16} />
-              </button>
-            </div>
-          </form>
+    <div style={{ position: 'relative' }}>
+      <form onSubmit={handleFormSubmit} className="search-bar">
+        <div className="search-input-wrapper">
+          <input
+            ref={inputRef}
+            type="text"
+            value={searchValue}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            onFocus={handleFocus}
+            placeholder="Search locations or amenities..."
+            className="search-input"
+          />
+          {searchValue && (
+            <button type="button" className="clear-search-btn" onClick={clearSearch}>
+              ✕
+            </button>
+          )}
+          <button type="button" className="filter-inline-btn" onClick={onFilterClick} aria-label="Open filters">
+            <Icon name="filter" size={16} />
+          </button>
+          <button type="submit" className="submit-search-btn" aria-label="Search">
+            <Icon name="search" size={16} />
+          </button>
         </div>
+      </form>
 
-        {(showSuggestions || isLoading) && (
-          <div ref={suggestionsRef} className="search-suggestions">
-            {isLoading ? (
-              <div className="suggestion-loading">
-                <div className="loading-spinner"></div>
-                <span>Searching locations...</span>
-              </div>
-            ) : suggestions.length > 0 ? (
-              suggestions.map((suggestion, index) => (
-                <button
-                  key={index}
-                  className="suggestion-item"
-                  onClick={() => handleSuggestionClick(suggestion)}
-                >
-                  {suggestion.type === 'location' ? (
-                    <>
-                      <Icon name="map-pin" size={16} className="suggestion-icon location-icon" />
-                      <div className="suggestion-content">
-                        <span className="suggestion-name">{suggestion.name}</span>
-                        <span className="suggestion-address">{suggestion.address}</span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <Icon name={suggestion.icon} size={16} className="suggestion-icon" />
-                      <div className="suggestion-content">
-                        <span className="suggestion-name">{suggestion.name}</span>
-                        <span className="suggestion-description">{suggestion.description}</span>
-                      </div>
-                    </>
-                  )}
-                </button>
-              ))
-            ) : searchValue.length >= 1 ? (
-              <div className="no-suggestions">
-                <span>No results found for "{searchValue}"</span>
-              </div>
-            ) : null}
-          </div>
-        )}
-      </div>
+      {(showSuggestions || isLoading) && (
+        <div ref={suggestionsRef} className="search-suggestions">
+          {isLoading ? (
+            <div className="suggestion-loading">
+              <div className="loading-spinner"></div>
+              <span>Searching locations...</span>
+            </div>
+          ) : suggestions.length > 0 ? (
+            suggestions.map((suggestion, index) => (
+              <button
+                key={index}
+                className="suggestion-item"
+                onClick={() => handleSuggestionClick(suggestion)}
+              >
+                {suggestion.type === 'location' ? (
+                  <>
+                    <Icon name="map-pin" size={16} className="suggestion-icon location-icon" />
+                    <div className="suggestion-content">
+                      <span className="suggestion-name">{suggestion.name}</span>
+                      <span className="suggestion-address">{suggestion.address}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Icon name={suggestion.icon} size={16} className="suggestion-icon" />
+                    <div className="suggestion-content">
+                      <span className="suggestion-name">{suggestion.name}</span>
+                      <span className="suggestion-description">{suggestion.description}</span>
+                    </div>
+                  </>
+                )}
+              </button>
+            ))
+          ) : searchValue.length >= 1 ? (
+            <div className="no-suggestions">
+              <span>No results found for "{searchValue}"</span>
+            </div>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 };

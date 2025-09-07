@@ -3,12 +3,16 @@
   bottom: 0;
   left: 0;
   right: 0;
-  background: white;
-  border-top: 1px solid #e0e0e0;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+  background: #FFFEF7;
+  border-top: 6px solid #000;
+  border-right: 6px solid #000;
+  border-left: 6px solid #000;
+  border-radius: 0;
+  box-shadow: 12px -12px 0px #000;
   z-index: 1000;
   max-height: 60vh;
   transition: transform 0.3s ease;
+  transform: rotate(-0.5deg);
 }
 
 .parking-space-list.hidden {
@@ -23,9 +27,10 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid #f0f0f0;
-  background: #fafafa;
+  padding: 16px 20px;
+  border-bottom: 4px solid #000;
+  background: #FFD700;
+  transform: rotate(0.5deg);
 }
 
 .list-title {
@@ -36,8 +41,12 @@
 
 .list-title h3 {
   margin: 0;
-  font-size: 16px;
-  color: #282c34;
+  font-size: 18px;
+  color: #000;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 2px 2px 0px #FFA500;
 }
 
 .space-counts {
@@ -47,35 +56,51 @@
 }
 
 .space-count {
-  background: #e3f2fd;
-  color: #1976d2;
-  padding: 2px 8px;
-  border-radius: 12px;
+  background: #4ECDC4;
+  color: #000;
+  padding: 4px 10px;
+  border: 2px solid #000;
+  border-radius: 0;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 2px 2px 0px #000;
+  transform: rotate(-2deg);
 }
 
 .additional-count {
-  background: #f3e5f5;
-  color: #7b1fa2;
-  padding: 1px 6px;
-  border-radius: 10px;
+  background: #FF6B6B;
+  color: #000;
+  padding: 3px 8px;
+  border: 2px solid #000;
+  border-radius: 0;
   font-size: 10px;
-  font-weight: 500;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 2px 2px 0px #000;
+  transform: rotate(2deg);
 }
 
 .toggle-list-btn {
-  background: none;
-  border: none;
-  font-size: 16px;
+  background: #FF4757;
+  border: 3px solid #000;
+  border-radius: 0;
+  font-size: 18px;
+  font-weight: 900;
   cursor: pointer;
-  padding: 4px;
-  color: #666;
-  transition: color 0.2s ease;
+  padding: 8px 12px;
+  color: #FFF;
+  transition: all 0.1s ease;
+  box-shadow: 3px 3px 0px #000;
+  transform: rotate(3deg);
 }
 
 .toggle-list-btn:hover {
-  color: #2196F3;
+  background: #FF3742;
+  transform: rotate(3deg) scale(1.1);
+  box-shadow: 4px 4px 0px #000;
 }
 
 .list-content {
@@ -91,16 +116,21 @@
 }
 
 .parking-space-item {
-  background: white;
-  padding: 16px;
+  background: #FFFEF7;
+  padding: 18px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  border-left: 4px solid transparent;
+  transition: all 0.1s ease;
+  border-left: 6px solid #FFD700;
+  border-bottom: 3px solid #E0E0E0;
+  transform: rotate(-0.2deg);
+  font-weight: 600;
 }
 
 .parking-space-item:hover {
-  background: #f8f9fa;
-  border-left-color: #2196F3;
+  background: #FFD700;
+  border-left-color: #FFA500;
+  transform: rotate(-0.2deg) translateX(2px);
+  box-shadow: 3px 3px 0px #000;
 }
 
 .space-header {
@@ -124,12 +154,15 @@
 }
 
 .space-price {
-  font-weight: 600;
-  color: #282c34;
-  font-size: 14px;
+  font-weight: 900;
+  color: #000;
+  font-size: 16px;
   display: flex;
   align-items: center;
   gap: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-shadow: 1px 1px 0px #FFD700;
 }
 
 .payment-indicator {
@@ -163,12 +196,17 @@
   display: flex;
   align-items: center;
   gap: 3px;
-  background: #f0f8ff;
-  color: #1976d2;
-  padding: 2px 6px;
-  border-radius: 8px;
+  background: #4ECDC4;
+  color: #000;
+  padding: 4px 8px;
+  border: 2px solid #000;
+  border-radius: 0;
   font-size: 10px;
-  font-weight: 500;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  box-shadow: 1px 1px 0px #000;
+  transform: rotate(-1deg);
 }
 
 .feature-label {
@@ -189,20 +227,25 @@
 
 .select-space-btn {
   width: 100%;
-  background: #2196F3;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
+  background: #4ECDC4;
+  color: #000;
+  border: 4px solid #000;
+  border-radius: 0;
+  padding: 12px 18px;
+  font-size: 14px;
+  font-weight: 900;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.1s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 4px 4px 0px #000;
+  transform: rotate(-1deg);
 }
 
 .select-space-btn:hover {
-  background: #1976d2;
-  transform: translateY(-1px);
+  background: #45B7B8;
+  transform: rotate(-1deg) translateY(-2px);
+  box-shadow: 6px 6px 0px #000;
 }
 
 .no-spaces {
