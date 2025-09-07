@@ -5,6 +5,7 @@ python-jose[cryptography]
 pyjwt
 passlib[bcrypt]
 python-multipart
+email-validator
 hypothesis
 schemathesis
 pytest

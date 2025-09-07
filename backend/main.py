@@ -18,7 +18,7 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, EmailStr, Field, ValidationInfo, field_validator
 
 
 # TypedDict for booking data
@@ -51,28 +51,16 @@ DEV_USER: dict[str, Any] = {
 
 
 class UserRegister(BaseModel):
-    email: str = Field(..., min_length=1, max_length=254)
+    email: EmailStr
     name: str = Field(..., min_length=1, max_length=100)
     user_type: str = "parker"  # parker, provider, both
     car_license_plate: str | None = None
     units_preference: str | None = Field(None, pattern="^(imperial|metric)$")
 
-    @field_validator("email", mode="before")
-    @classmethod
-    def validate_email(cls, v: Any) -> str:
-        if not isinstance(v, str):
-            raise ValueError("Email must be a string")
-        # Basic ASCII check to prevent unicode issues
-        try:
-            v.encode("ascii")
-        except UnicodeEncodeError:
-            raise ValueError("Email must contain only ASCII characters") from None
-        return v
-
 
 class UserResponse(BaseModel):
     id: int
-    email: str
+    email: EmailStr
     name: str
     user_type: str
     rating: float = 0.0
@@ -124,6 +112,8 @@ class ParkingSpaceResponse(BaseModel):
 
 
 class Booking(BaseModel):
+    model_config = {"extra": "forbid"}
+
     space_id: Annotated[int, Field(ge=0, le=2147483647)]  # SQLite INTEGER range
     start_time: datetime
     end_time: datetime
@@ -160,15 +150,15 @@ class ReportLicensePlate(BaseModel):
     license_plate: str = Field(..., min_length=1)
     space_id: int | None = Field(None, ge=1, le=2147483647)
     description: str = Field(..., min_length=1)
-    reporter_email: str | None = None
+    reporter_email: EmailStr | None = None
 
 
 class VerificationSubmission(BaseModel):
-    user_email: str
+    user_email: EmailStr
 
 
 class VerificationStatus(BaseModel):
-    user_email: str
+    user_email: EmailStr
     status: str  # pending, verified, rejected
     profile_photo_url: str | None = None
     id_document_url: str | None = None
@@ -309,7 +299,12 @@ async def register(user: UserRegister):
     if existing_user:
         # For testing, make it unique
         unique_suffix = str(int(time.time() * 1000000))[-8:]
-        user.email = f"{user.email}_{unique_suffix}"
+        # Keep email valid by adding suffix before @ sign
+        email_parts = user.email.split("@")
+        if len(email_parts) == 2:
+            user.email = f"{email_parts[0]}{unique_suffix}@{email_parts[1]}"
+        else:
+            user.email = f"{user.email}{unique_suffix}@example.com"
         user.name = f"{user.name}_{unique_suffix}"
 
     # Create user
@@ -862,7 +857,7 @@ async def upload_verification_documents(
     profile_photo: UploadFile = File(...),
     id_document: UploadFile = File(...),
     vehicle_registration: UploadFile = File(...),
-    user_email: str = Form(...),
+    user_email: EmailStr = Form(...),
 ):
     """Upload verification documents for identity verification"""
     try:
@@ -947,7 +942,7 @@ async def upload_verification_documents(
 
 
 @app.get("/verification/status", response_model=VerificationStatus)
-async def get_verification_status(email: str):
+async def get_verification_status(email: EmailStr):
     """Get user's verification status"""
     try:
         verification = db.get_user_verification(email)
@@ -975,7 +970,7 @@ async def get_verification_status(email: str):
 
 
 @app.put("/verification/admin/update-status", responses={404: {"description": "Verification record not found"}})
-async def update_verification_status_admin(user_email: str, update: VerificationStatusUpdate):
+async def update_verification_status_admin(user_email: EmailStr, update: VerificationStatusUpdate):
     """Update verification status (admin only - simplified for MVP)"""
     try:
         success = db.update_verification_status(

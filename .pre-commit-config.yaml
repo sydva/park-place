@@ -10,3 +10,4 @@ repos:
     rev: v1.1.405
     hooks:
       - id: pyright
+        files: ^backend/
