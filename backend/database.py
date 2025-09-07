@@ -114,29 +114,15 @@ def init_database():
         # Create indexes for better performance
         conn.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)")
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_users_license_plate ON users(license_plate)"
-        )
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_places_latitude ON places(latitude)"
-        )
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_places_longitude ON places(longitude)"
-        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_users_license_plate ON users(license_plate)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_places_latitude ON places(latitude)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_places_longitude ON places(longitude)")
 
         # Create indexes for rating tables
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_user_ratings_rater ON user_ratings(rater_id)"
-        )
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_user_ratings_ratee ON user_ratings(ratee_id)"
-        )
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_place_ratings_user ON place_ratings(user_id)"
-        )
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_place_ratings_place ON place_ratings(place_id)"
-        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_user_ratings_rater ON user_ratings(rater_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_user_ratings_ratee ON user_ratings(ratee_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_place_ratings_user ON place_ratings(user_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_place_ratings_place ON place_ratings(place_id)")
 
         # Add price_per_hour column if it doesn't exist (for existing databases)
         cursor = conn.cursor()
@@ -145,17 +131,13 @@ def init_database():
         cursor.execute("PRAGMA table_info(places)")
         places_columns = [column[1] for column in cursor.fetchall()]
         if "price_per_hour" not in places_columns:
-            conn.execute(
-                "ALTER TABLE places ADD COLUMN price_per_hour DECIMAL(10, 2) DEFAULT 0"
-            )
+            conn.execute("ALTER TABLE places ADD COLUMN price_per_hour DECIMAL(10, 2) DEFAULT 0")
 
         # Add user_type column to users table if it doesn't exist
         cursor.execute("PRAGMA table_info(users)")
         users_columns = [column[1] for column in cursor.fetchall()]
         if "user_type" not in users_columns:
-            conn.execute(
-                "ALTER TABLE users ADD COLUMN user_type TEXT DEFAULT 'parker' CHECK(user_type IN ('parker', 'provider', 'both'))"
-            )
+            conn.execute("ALTER TABLE users ADD COLUMN user_type TEXT DEFAULT 'parker' CHECK(user_type IN ('parker', 'provider', 'both'))")
 
         # Add tags column to places table if it doesn't exist
         cursor.execute("PRAGMA table_info(places)")
@@ -167,23 +149,7 @@ def init_database():
         cursor.execute("PRAGMA table_info(users)")
         users_columns = [column[1] for column in cursor.fetchall()]
         if "units_preference" not in users_columns:
-            conn.execute(
-                "ALTER TABLE users ADD COLUMN units_preference TEXT DEFAULT 'imperial' CHECK(units_preference IN ('metric', 'imperial'))"
-            )
-
-        # Add verified_only column to places table if it doesn't exist
-        cursor.execute("PRAGMA table_info(places)")
-        places_columns = [column[1] for column in cursor.fetchall()]
-        if "verified_only" not in places_columns:
-            conn.execute(
-                "ALTER TABLE places ADD COLUMN verified_only BOOLEAN DEFAULT 0"
-            )
-
-        # Add is_verified column to users table if it doesn't exist
-        cursor.execute("PRAGMA table_info(users)")
-        users_columns = [column[1] for column in cursor.fetchall()]
-        if "is_verified" not in users_columns:
-            conn.execute("ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT 0")
+            conn.execute("ALTER TABLE users ADD COLUMN units_preference TEXT DEFAULT 'imperial' CHECK(units_preference IN ('metric', 'imperial'))")
 
         conn.commit()
 
@@ -211,15 +177,14 @@ def create_user(
     user_type: str = "parker",
     license_plate_state: str | None = None,
     license_plate: str | None = None,
-    is_verified: bool = False,
 ) -> int:
     """Create a new user and return the user ID"""
     with get_db() as conn:
         cursor = conn.execute(
             """
             INSERT INTO users (email, username, hashed_password, user_type,
-                license_plate_state, license_plate, is_verified)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                license_plate_state, license_plate)
+            VALUES (?, ?, ?, ?, ?, ?)
         """,
             (
                 email,
@@ -228,10 +193,22 @@ def create_user(
                 user_type,
                 license_plate_state,
                 license_plate,
-                is_verified,
             ),
         )
         return cursor.lastrowid or 0
+
+
+def get_user_by_license_plate(license_plate: str) -> dict[str, Any] | None:
+    """Get user by license plate"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            SELECT * FROM users WHERE license_plate = ?
+        """,
+            (license_plate,),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
 
 
 def get_user_by_email(email: str) -> dict[str, Any] | None:
@@ -253,9 +230,7 @@ def get_user_by_email(email: str) -> dict[str, Any] | None:
         if row:
             result = dict(row)
             # Convert to proper types
-            result["average_rating"] = (
-                float(result["average_rating"]) if result["rating_count"] > 0 else None
-            )
+            result["average_rating"] = float(result["average_rating"]) if result["rating_count"] > 0 else None
             return result
         return None
 
@@ -279,9 +254,7 @@ def get_user_by_id(user_id: int) -> dict[str, Any] | None:
         if row:
             result = dict(row)
             # Convert to proper types
-            result["average_rating"] = (
-                float(result["average_rating"]) if result["rating_count"] > 0 else None
-            )
+            result["average_rating"] = float(result["average_rating"]) if result["rating_count"] > 0 else None
             return result
         return None
 
@@ -325,9 +298,7 @@ def update_user(
     params.append(email)  # For the WHERE clause
 
     with get_db() as conn:
-        cursor = conn.execute(
-            f"UPDATE users SET {', '.join(updates)} WHERE email = ?", params
-        )
+        cursor = conn.execute(f"UPDATE users SET {', '.join(updates)} WHERE email = ?", params)
         return cursor.rowcount > 0
 
 
@@ -342,7 +313,6 @@ def create_place(
     address: str | None = None,
     price_per_hour: float = 0.0,
     tags: list[str] | None = None,
-    verified_only: bool = False,
 ) -> int:
     """Create a new place and return the place ID"""
     import json
@@ -353,8 +323,8 @@ def create_place(
         cursor = conn.execute(
             """
             INSERT INTO places (title, description, added_by, creator_is_owner,
-                latitude, longitude, address, price_per_hour, tags, verified_only)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                latitude, longitude, address, price_per_hour, tags)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
             (
                 title,
@@ -366,7 +336,6 @@ def create_place(
                 address,
                 price_per_hour,
                 tags_json,
-                verified_only,
             ),
         )
         return cursor.lastrowid or 0
@@ -403,16 +372,12 @@ def get_place_by_id(place_id: int) -> dict[str, Any] | None:
         if row:
             result = dict(row)
             # Convert to proper types
-            result["average_rating"] = (
-                float(result["average_rating"]) if result["rating_count"] > 0 else None
-            )
+            result["average_rating"] = float(result["average_rating"]) if result["rating_count"] > 0 else None
             return _parse_place_tags(result)
         return None
 
 
-def get_places_by_creator(
-    creator_id: int, skip: int = 0, limit: int = 100
-) -> list[dict[str, Any]]:
+def get_places_by_creator(creator_id: int, skip: int = 0, limit: int = 100) -> list[dict[str, Any]]:
     """Get places by creator ID with rating statistics"""
     with get_db() as conn:
         cursor = conn.execute(
@@ -432,16 +397,12 @@ def get_places_by_creator(
         results = []
         for row in cursor.fetchall():
             result = dict(row)
-            result["average_rating"] = (
-                float(result["average_rating"]) if result["rating_count"] > 0 else None
-            )
+            result["average_rating"] = float(result["average_rating"]) if result["rating_count"] > 0 else None
             results.append(_parse_place_tags(result))
         return results
 
 
-def get_places_by_owner(
-    owner_id: int, skip: int = 0, limit: int = 100
-) -> list[dict[str, Any]]:
+def get_places_by_owner(owner_id: int, skip: int = 0, limit: int = 100) -> list[dict[str, Any]]:
     """Get places owned by a user (where creator_is_owner=True and added_by=owner_id)"""
     with get_db() as conn:
         cursor = conn.execute(
@@ -461,9 +422,7 @@ def get_places_by_owner(
         results = []
         for row in cursor.fetchall():
             result = dict(row)
-            result["average_rating"] = (
-                float(result["average_rating"]) if result["rating_count"] > 0 else None
-            )
+            result["average_rating"] = float(result["average_rating"]) if result["rating_count"] > 0 else None
             results.append(_parse_place_tags(result))
         return results
 
@@ -488,62 +447,13 @@ def get_published_places(skip: int = 0, limit: int = 100) -> list[dict[str, Any]
         results = []
         for row in cursor.fetchall():
             result = dict(row)
-            result["average_rating"] = (
-                float(result["average_rating"]) if result["rating_count"] > 0 else None
-            )
+            result["average_rating"] = float(result["average_rating"]) if result["rating_count"] > 0 else None
             results.append(_parse_place_tags(result))
         return results
 
 
-def search_places_by_location(
-    lat: float, lng: float, radius_km: float = 1.0, user_is_verified: bool = False
-) -> list[dict[str, Any]]:
+def search_places_by_location(lat: float, lng: float, radius_km: float = 1.0) -> list[dict[str, Any]]:
     """Search places within radius of given coordinates with rating statistics"""
-    with get_db() as conn:
-        # Simple bounding box search (for MVP - in production use PostGIS)
-        # 1 degree of latitude ≈ 111 km
-        lat_delta = radius_km / 111.0
-        # 1 degree of longitude varies by latitude
-        import math
-
-        lng_delta = radius_km / (111.0 * math.cos(math.radians(lat)))
-
-        # If user is not verified, filter out verified-only spaces
-        verification_filter = (
-            ""
-            if user_is_verified
-            else "AND (p.verified_only = 0 OR p.verified_only IS NULL)"
-        )
-
-        cursor = conn.execute(
-            f"""
-            SELECT p.*,
-                   COALESCE(AVG(pr.rating), 0) as average_rating,
-                   COUNT(pr.rating) as rating_count
-            FROM places p
-            LEFT JOIN place_ratings pr ON p.id = pr.place_id
-            WHERE p.latitude BETWEEN ? AND ?
-            AND p.longitude BETWEEN ? AND ?
-            AND p.is_published = 1
-            {verification_filter}
-            GROUP BY p.id
-        """,
-            (lat - lat_delta, lat + lat_delta, lng - lng_delta, lng + lng_delta),
-        )
-        results = []
-        for row in cursor.fetchall():
-            result = dict(row)
-            result["average_rating"] = (
-                float(result["average_rating"]) if result["rating_count"] > 0 else None
-            )
-            results.append(_parse_place_tags(result))
-        return results
-
-
-def get_spaces_count_by_verification(
-    lat: float, lng: float, radius_km: float = 1.0
-) -> dict[str, int]:
-    """Get count of spaces by verification requirement"""
     with get_db() as conn:
         # Simple bounding box search (for MVP - in production use PostGIS)
         # 1 degree of latitude ≈ 111 km
@@ -555,26 +465,24 @@ def get_spaces_count_by_verification(
 
         cursor = conn.execute(
             """
-            SELECT
-                COUNT(*) as total_spaces,
-                SUM(CASE WHEN verified_only = 1 THEN 1 ELSE 0 END) as verified_only_spaces,
-                SUM(CASE WHEN verified_only = 0 OR verified_only IS NULL THEN 1 ELSE 0 END) as public_spaces
+            SELECT p.*,
+                   COALESCE(AVG(pr.rating), 0) as average_rating,
+                   COUNT(pr.rating) as rating_count
             FROM places p
+            LEFT JOIN place_ratings pr ON p.id = pr.place_id
             WHERE p.latitude BETWEEN ? AND ?
             AND p.longitude BETWEEN ? AND ?
             AND p.is_published = 1
+            GROUP BY p.id
         """,
             (lat - lat_delta, lat + lat_delta, lng - lng_delta, lng + lng_delta),
         )
-
-        row = cursor.fetchone()
-        if row:
-            return {
-                "total_spaces": int(row["total_spaces"]),
-                "verified_only_spaces": int(row["verified_only_spaces"]),
-                "public_spaces": int(row["public_spaces"]),
-            }
-        return {"total_spaces": 0, "verified_only_spaces": 0, "public_spaces": 0}
+        results = []
+        for row in cursor.fetchall():
+            result = dict(row)
+            result["average_rating"] = float(result["average_rating"]) if result["rating_count"] > 0 else None
+            results.append(_parse_place_tags(result))
+        return results
 
 
 def update_place(place_id: int, **kwargs: Any) -> bool:
@@ -747,9 +655,7 @@ def get_user_average_rating(user_id: int) -> float | None:
 def get_user_rating_count(user_id: int) -> int:
     """Get the total number of ratings for a user"""
     with get_db() as conn:
-        cursor = conn.execute(
-            "SELECT COUNT(*) FROM user_ratings WHERE ratee_id = ?", (user_id,)
-        )
+        cursor = conn.execute("SELECT COUNT(*) FROM user_ratings WHERE ratee_id = ?", (user_id,))
         return cursor.fetchone()[0]
 
 
@@ -773,9 +679,7 @@ def create_place_rating(
 
 
 # Notification operations
-def create_notification(
-    user_email: str, title: str, message: str, notification_type: str = "info"
-) -> int:
+def create_notification(user_email: str, title: str, message: str, notification_type: str = "info") -> int:
     """Create a new notification and return the notification ID"""
     with get_db() as conn:
         cursor = conn.execute(
@@ -788,9 +692,7 @@ def create_notification(
         return cursor.lastrowid or 0
 
 
-def get_user_notifications(
-    user_email: str, unread_only: bool = False
-) -> list[dict[str, Any]]:
+def get_user_notifications(user_email: str, unread_only: bool = False) -> list[dict[str, Any]]:
     """Get notifications for a user"""
     with get_db() as conn:
         query = """
@@ -811,9 +713,7 @@ def get_user_notifications(
 def mark_notification_read(notification_id: int) -> bool:
     """Mark a notification as read"""
     with get_db() as conn:
-        cursor = conn.execute(
-            "UPDATE notifications SET is_read = 1 WHERE id = ?", (notification_id,)
-        )
+        cursor = conn.execute("UPDATE notifications SET is_read = 1 WHERE id = ?", (notification_id,))
         return cursor.rowcount > 0
 
 
@@ -875,9 +775,7 @@ def get_place_average_rating(place_id: int) -> float | None:
 def get_place_rating_count(place_id: int) -> int:
     """Get the total number of ratings for a place"""
     with get_db() as conn:
-        cursor = conn.execute(
-            "SELECT COUNT(*) FROM place_ratings WHERE place_id = ?", (place_id,)
-        )
+        cursor = conn.execute("SELECT COUNT(*) FROM place_ratings WHERE place_id = ?", (place_id,))
         return cursor.fetchone()[0]
 
 

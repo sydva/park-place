@@ -5,7 +5,7 @@ Script to populate the database with diverse test parking spaces, users, and rev
 
 import random
 
-import database as db
+from . import database as db
 
 # Test user data - now using unified user system
 TEST_USERS = [
@@ -14,56 +14,48 @@ TEST_USERS = [
         "username": "john_parker",
         "license_plate": "ABC123",
         "user_type": "parker",
-        "is_verified": False,
     },
     {
         "email": "sara@example.com",
         "username": "sara_driver",
         "license_plate": "XYZ789",
         "user_type": "parker",
-        "is_verified": True,
     },
     {
         "email": "mike@example.com",
         "username": "mike_commuter",
         "license_plate": "DEF456",
         "user_type": "parker",
-        "is_verified": True,
     },
     {
         "email": "garage_owner@example.com",
         "username": "downtown_garage",
         "license_plate": "GRG001",
         "user_type": "parker",
-        "is_verified": True,
     },
     {
         "email": "homeowner@example.com",
         "username": "driveway_sharer",
         "license_plate": "HOM002",
         "user_type": "parker",
-        "is_verified": True,
     },
     {
         "email": "business@example.com",
         "username": "office_parking",
         "license_plate": "BIZ003",
         "user_type": "parker",
-        "is_verified": False,
     },
     {
         "email": "amy@example.com",
         "username": "amy_reviewer",
         "license_plate": "AMY456",
         "user_type": "parker",
-        "is_verified": True,
     },
     {
         "email": "carlos@example.com",
         "username": "carlos_tech",
         "license_plate": "CAR789",
         "user_type": "parker",
-        "is_verified": False,
     },
 ]
 
@@ -84,7 +76,6 @@ DIVERSE_PARKING_SPACES = [
             "valet",
             "disabled-access",
         ],
-        "verified_only": True,
     },
     {
         "title": "Budget Street Parking - Basic",
@@ -94,7 +85,6 @@ DIVERSE_PARKING_SPACES = [
         "address": "456 Mission St, San Francisco, CA",
         "price_per_hour": 0.0,
         "tags": [],
-        "verified_only": False,
     },
     {
         "title": "Residential Driveway - BART Access",
@@ -104,7 +94,6 @@ DIVERSE_PARKING_SPACES = [
         "address": "789 California St, San Francisco, CA",
         "price_per_hour": 8.0,
         "tags": ["well-lit", "wide-spaces"],
-        "verified_only": False,
     },
     {
         "title": "Secure Business Lot - Tech Hub",
@@ -114,7 +103,6 @@ DIVERSE_PARKING_SPACES = [
         "address": "321 Montgomery St, San Francisco, CA",
         "price_per_hour": 15.0,
         "tags": ["covered", "security-camera", "wide-spaces", "disabled-access"],
-        "verified_only": True,
     },
     {
         "title": "EV Charging Station - Tesla Supercharger",
@@ -124,7 +112,6 @@ DIVERSE_PARKING_SPACES = [
         "address": "654 Castro St, San Francisco, CA",
         "price_per_hour": 12.0,
         "tags": ["ev-charging", "covered", "well-lit"],
-        "verified_only": True,
     },
     {
         "title": "Compact Car Only - Chinatown Alley",
@@ -134,7 +121,6 @@ DIVERSE_PARKING_SPACES = [
         "address": "987 Grant Ave, San Francisco, CA",
         "price_per_hour": 5.0,
         "tags": [],
-        "verified_only": False,
     },
     {
         "title": "Night Owl Special - Restaurant District",
@@ -144,7 +130,6 @@ DIVERSE_PARKING_SPACES = [
         "address": "159 Columbus Ave, San Francisco, CA",
         "price_per_hour": 10.0,
         "tags": ["covered", "well-lit", "24-7-access"],
-        "verified_only": False,
     },
     {
         "title": "Family-Friendly Suburban Spot",
@@ -154,7 +139,6 @@ DIVERSE_PARKING_SPACES = [
         "address": "753 Geary Blvd, San Francisco, CA",
         "price_per_hour": 6.0,
         "tags": ["wide-spaces", "well-lit", "disabled-access"],
-        "verified_only": False,
     },
     {
         "title": "Event Parking - SOMA Warehouse",
@@ -164,7 +148,6 @@ DIVERSE_PARKING_SPACES = [
         "address": "852 Folsom St, San Francisco, CA",
         "price_per_hour": 18.0,
         "tags": ["wide-spaces", "security-camera", "24-7-access"],
-        "verified_only": True,
     },
     {
         "title": "Luxury Pacific Heights - City Views",
@@ -174,7 +157,6 @@ DIVERSE_PARKING_SPACES = [
         "address": "741 Fillmore St, San Francisco, CA",
         "price_per_hour": 30.0,
         "tags": ["covered", "valet", "security-camera", "disabled-access"],
-        "verified_only": True,
     },
     {
         "title": "Senior-Friendly Community Spot",
@@ -184,7 +166,6 @@ DIVERSE_PARKING_SPACES = [
         "address": "963 Irving St, San Francisco, CA",
         "price_per_hour": 4.0,
         "tags": ["disabled-access", "well-lit", "wide-spaces"],
-        "verified_only": False,
     },
     {
         "title": "Artist Quarter - Creative District",
@@ -194,7 +175,6 @@ DIVERSE_PARKING_SPACES = [
         "address": "258 Haight St, San Francisco, CA",
         "price_per_hour": 7.0,
         "tags": ["well-lit"],
-        "verified_only": False,
     },
     {
         "title": "Shopping Paradise - Union Square Premium",
@@ -204,7 +184,6 @@ DIVERSE_PARKING_SPACES = [
         "address": "333 Post St, San Francisco, CA",
         "price_per_hour": 22.0,
         "tags": ["covered", "security-camera", "disabled-access", "valet"],
-        "verified_only": True,
     },
     {
         "title": "Convention Center Hub",
@@ -214,7 +193,6 @@ DIVERSE_PARKING_SPACES = [
         "address": "777 Howard St, San Francisco, CA",
         "price_per_hour": 16.0,
         "tags": ["covered", "wide-spaces", "24-7-access", "disabled-access"],
-        "verified_only": True,
     },
     {
         "title": "Waterfront Views - Embarcadero",
@@ -224,7 +202,6 @@ DIVERSE_PARKING_SPACES = [
         "address": "101 Embarcadero, San Francisco, CA",
         "price_per_hour": 14.0,
         "tags": ["well-lit", "security-camera"],
-        "verified_only": True,
     },
 ]
 
@@ -328,7 +305,6 @@ def populate_database():
                 hashed_password="test_hash_" + user["username"],
                 user_type=user["user_type"],
                 license_plate=user["license_plate"],
-                is_verified=user["is_verified"],
             )
             user_ids.append(user_id)
             print(f"  ✓ Created user: {user['username']} (ID: {user_id})")
@@ -356,12 +332,9 @@ def populate_database():
                 address=str(space["address"]),
                 price_per_hour=float(space["price_per_hour"]),
                 tags=space["tags"],
-                verified_only=space.get("verified_only", False),
             )
             place_ids.append(place_id)
-            print(
-                f"  ✓ Created parking space: {space['title']} (ID: {place_id}) - ${space['price_per_hour']}/hr"
-            )
+            print(f"  ✓ Created parking space: {space['title']} (ID: {place_id}) - ${space['price_per_hour']}/hr")
         except Exception as e:
             print(f"  ⚠ Failed to create parking space {space['title']}: {e}")
 
@@ -383,9 +356,7 @@ def populate_database():
                     rating=review_data["rating"],
                     description=review_data["description"],
                 )
-                print(
-                    f"  ✓ Added review: {review_data['rating']} stars for place {place_id}"
-                )
+                print(f"  ✓ Added review: {review_data['rating']} stars for place {place_id}")
             except Exception as e:
                 # Skip if duplicate rating (unique constraint)
                 if "UNIQUE constraint failed" not in str(e):

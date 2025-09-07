@@ -8,7 +8,7 @@ reportMissingModuleSource = "none"
 
 [tool.ruff]
 target-version = "py312"
-line-length = 88
+line-length = 200
 unsafe-fixes = true
 
 [tool.ruff.lint]

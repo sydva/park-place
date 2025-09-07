@@ -5,11 +5,12 @@ from pathlib import Path as FilePath
 from typing import Annotated, Any, TypedDict
 
 import anyio
-import database as db
 from fastapi import FastAPI, File, Form, HTTPException, Path, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
+
+from backend import database as db
 
 
 # TypedDict for booking data
@@ -130,9 +131,7 @@ class BookingResponse(BaseModel):
 class SearchQuery(BaseModel):
     lat: Annotated[float, Field(ge=-90, le=90)]  # Valid latitude range
     lng: Annotated[float, Field(ge=-180, le=180)]  # Valid longitude range
-    radius: Annotated[float, Field(gt=0, le=1000)] = (
-        1.0  # km, positive and reasonable max
-    )
+    radius: Annotated[float, Field(gt=0, le=1000)] = 1.0  # km, positive and reasonable max
     min_price: Annotated[float, Field(ge=0)] | None = None
     max_price: Annotated[float, Field(ge=0)] | None = None
 
@@ -363,6 +362,8 @@ async def update_user_profile(user_data: UserRegister):
 
         # Return updated profile
         updated_user = db.get_user_by_email(user_data.email)
+        if not updated_user:
+            raise HTTPException(status_code=404, detail="User not found after update")
         return {
             "id": updated_user["id"],
             "email": updated_user["email"],
@@ -378,7 +379,7 @@ async def update_user_profile(user_data: UserRegister):
         raise
     except Exception as e:
         print(f"Error updating profile: {e}")
-        raise HTTPException(status_code=500, detail="Failed to update profile")
+        raise HTTPException(status_code=500, detail="Failed to update profile") from e
 
 
 @app.get("/spaces", response_model=list[ParkingSpaceResponse])
@@ -387,7 +388,7 @@ async def get_spaces(limit: Annotated[int, Query(ge=1, le=10000)] = 100):
     return [
         ParkingSpaceResponse(
             id=place["id"],
-            owner_id=place["owned_by"] or place["added_by"],
+            owner_id=place["added_by"],
             title=place["title"],
             description=place["description"],
             lat=place["latitude"] or 0.0,
@@ -398,25 +399,15 @@ async def get_spaces(limit: Annotated[int, Query(ge=1, le=10000)] = 100):
             is_available=True,
             requires_verification=place.get("requires_verification", False),
             image_url=None,
-            created_at=place["created_at"] + "Z"
-            if not place["created_at"].endswith("Z")
-            else place["created_at"],
+            created_at=place["created_at"] + "Z" if not place["created_at"].endswith("Z") else place["created_at"],
         )
         for place in places
     ]
 
 
 @app.post("/spaces/search", response_model=list[ParkingSpaceResponse])
-async def search_spaces(query: SearchQuery, user_email: str | None = None):
-    # Check if user is verified
-    user_is_verified = False
-    if user_email:
-        user = db.get_user_by_email(user_email)
-        user_is_verified = user.get("is_verified", False) if user else False
-
-    places = db.search_places_by_location(
-        query.lat, query.lng, query.radius, user_is_verified
-    )
+async def search_spaces(query: SearchQuery):
+    places = db.search_places_by_location(query.lat, query.lng, query.radius)
 
     results: list[ParkingSpaceResponse] = []
     for place in places:
@@ -441,9 +432,7 @@ async def search_spaces(query: SearchQuery, user_email: str | None = None):
                 is_available=True,
                 requires_verification=place.get("requires_verification", False),
                 image_url=None,
-                created_at=place["created_at"] + "Z"
-                if not place["created_at"].endswith("Z")
-                else place["created_at"],
+                created_at=place["created_at"] + "Z" if not place["created_at"].endswith("Z") else place["created_at"],
             )
         )
 
@@ -455,20 +444,9 @@ async def get_nearby_spaces(
     lat: Annotated[float, Query(ge=-90, le=90)],
     lng: Annotated[float, Query(ge=-180, le=180)],
     radius: Annotated[float, Query(gt=0, le=1000)] = 1.0,
-    user_email: str | None = None,
 ):
     query = SearchQuery(lat=lat, lng=lng, radius=radius)
-    return await search_spaces(query, user_email)
-
-
-@app.get("/spaces/count")
-async def get_spaces_count(
-    lat: Annotated[float, Query(ge=-90, le=90)],
-    lng: Annotated[float, Query(ge=-180, le=180)],
-    radius: Annotated[float, Query(gt=0, le=1000)] = 1.0,
-):
-    """Get count of spaces by verification requirement"""
-    return db.get_spaces_count_by_verification(lat, lng, radius)
+    return await search_spaces(query)
 
 
 @app.post("/spaces", response_model=ParkingSpaceResponse)
@@ -479,13 +457,12 @@ async def create_space(space: ParkingSpace):
         added_by=current_user["id"],
         title=space.title,
         description=space.description,
-        owned_by=current_user["id"]
-        if current_user["user_type"] == "provider"
-        else None,
+        creator_is_owner=current_user["user_type"] == "provider",
         latitude=space.lat,
         longitude=space.lng,
         address="",  # TODO: Add geocoding
         price_per_hour=space.price_per_hour,
+        tags=space.tags,
     )
 
     place = db.get_place_by_id(place_id)
@@ -505,9 +482,7 @@ async def create_space(space: ParkingSpace):
         is_available=True,
         requires_verification=False,  # New spaces don't require verification by default
         image_url=space.image_url,
-        created_at=place["created_at"] + "Z"
-        if not place["created_at"].endswith("Z")
-        else place["created_at"],
+        created_at=place["created_at"] + "Z" if not place["created_at"].endswith("Z") else place["created_at"],
     )
 
 
@@ -534,9 +509,7 @@ async def get_space(space_id: Annotated[int, Path(ge=0, le=2147483647)]):
         is_available=True,
         requires_verification=place.get("requires_verification", False),
         image_url=None,
-        created_at=place["created_at"] + "Z"
-        if not place["created_at"].endswith("Z")
-        else place["created_at"],
+        created_at=place["created_at"] + "Z" if not place["created_at"].endswith("Z") else place["created_at"],
     )
 
 
@@ -548,18 +521,13 @@ async def get_space(space_id: Annotated[int, Path(ge=0, le=2147483647)]):
         403: {"description": "Not authorized"},
     },
 )
-async def update_space(
-    space_id: Annotated[int, Path(ge=0, le=2147483647)], space: ParkingSpace
-):
+async def update_space(space_id: Annotated[int, Path(ge=0, le=2147483647)], space: ParkingSpace):
     current_user = get_current_user()
     place = db.get_place_by_id(space_id)
     if not place:
         raise HTTPException(status_code=404, detail="Space not found")
 
-    if (
-        place["owned_by"] != current_user["id"]
-        and place["added_by"] != current_user["id"]
-    ):
+    if place["owned_by"] != current_user["id"] and place["added_by"] != current_user["id"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     db.update_place(
@@ -588,9 +556,7 @@ async def update_space(
         is_available=True,
         requires_verification=updated_place.get("requires_verification", False),
         image_url=space.image_url,
-        created_at=updated_place["created_at"] + "Z"
-        if not updated_place["created_at"].endswith("Z")
-        else updated_place["created_at"],
+        created_at=updated_place["created_at"] + "Z" if not updated_place["created_at"].endswith("Z") else updated_place["created_at"],
     )
 
 
@@ -607,10 +573,7 @@ async def delete_space(space_id: Annotated[int, Path(ge=0, le=2147483647)]):
     if not place:
         raise HTTPException(status_code=404, detail="Space not found")
 
-    if (
-        place["owned_by"] != current_user["id"]
-        and place["added_by"] != current_user["id"]
-    ):
+    if place["owned_by"] != current_user["id"] and place["added_by"] != current_user["id"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     db.delete_place(space_id)
@@ -625,18 +588,13 @@ async def delete_space(space_id: Annotated[int, Path(ge=0, le=2147483647)]):
         400: {"description": "Invalid file"},
     },
 )
-async def upload_image(
-    space_id: Annotated[int, Path(ge=0, le=2147483647)], file: UploadFile = File(...)
-):
+async def upload_image(space_id: Annotated[int, Path(ge=0, le=2147483647)], file: UploadFile = File(...)):
     current_user = get_current_user()
     place = db.get_place_by_id(space_id)
     if not place:
         raise HTTPException(status_code=404, detail="Space not found")
 
-    if (
-        place["owned_by"] != current_user["id"]
-        and place["added_by"] != current_user["id"]
-    ):
+    if place["owned_by"] != current_user["id"] and place["added_by"] != current_user["id"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     # Validate file type
@@ -644,11 +602,7 @@ async def upload_image(
         raise HTTPException(status_code=400, detail="File must be an image")
 
     # Generate unique filename
-    file_extension = (
-        file.filename.split(".")[-1]
-        if file.filename and "." in file.filename
-        else "jpg"
-    )
+    file_extension = file.filename.split(".")[-1] if file.filename and "." in file.filename else "jpg"
     filename = f"space_{space_id}_{datetime.now().timestamp():.0f}.{file_extension}"
     file_path = UPLOAD_DIR / filename
 
@@ -700,13 +654,8 @@ async def create_booking(booking: Booking):
 
     # Check availability (simplified)
     for existing_booking in bookings_db.values():
-        if existing_booking["space_id"] == booking.space_id and not (
-            booking.end_time <= existing_booking["start_time"]
-            or booking.start_time >= existing_booking["end_time"]
-        ):
-            raise HTTPException(
-                status_code=400, detail="Space not available for this time"
-            )
+        if existing_booking["space_id"] == booking.space_id and not (booking.end_time <= existing_booking["start_time"] or booking.start_time >= existing_booking["end_time"]):
+            raise HTTPException(status_code=400, detail="Space not available for this time")
 
     booking_id = next_booking_id
     next_booking_id += 1
@@ -775,10 +724,7 @@ async def get_space_bookings(space_id: Annotated[int, Path(ge=0, le=2147483647)]
     if not place:
         raise HTTPException(status_code=404, detail="Space not found")
 
-    if (
-        place["owned_by"] != current_user["id"]
-        and place["added_by"] != current_user["id"]
-    ):
+    if place["owned_by"] != current_user["id"] and place["added_by"] != current_user["id"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     space_bookings = [
@@ -810,7 +756,8 @@ async def report_license_plate(report: ReportLicensePlate):
         )
 
         # Find the owner of the reported license plate and send notification
-        parker = db.get_parker_by_license_plate(report.license_plate)
+        # Find user by license plate
+        parker = db.get_user_by_license_plate(report.license_plate)
         if parker:
             # Create notification for the owner of the license plate
             db.create_notification(
@@ -872,13 +819,9 @@ async def upload_verification_documents(
             return f"{doc_type}_{user_email.replace('@', '_')}_{timestamp}_{uuid.uuid4().hex[:8]}.{ext}"
 
         # Save files
-        profile_photo_filename = create_filename(
-            profile_photo.filename or "photo.jpg", "profile"
-        )
+        profile_photo_filename = create_filename(profile_photo.filename or "photo.jpg", "profile")
         id_document_filename = create_filename(id_document.filename or "id.jpg", "id")
-        vehicle_reg_filename = create_filename(
-            vehicle_registration.filename or "registration.jpg", "vehicle"
-        )
+        vehicle_reg_filename = create_filename(vehicle_registration.filename or "registration.jpg", "vehicle")
 
         # Save files to upload directory
         for file, filename in [
@@ -917,9 +860,7 @@ async def upload_verification_documents(
         raise
     except Exception as e:
         print(f"Error uploading verification documents: {e}")
-        raise HTTPException(
-            status_code=500, detail="Failed to upload verification documents"
-        )
+        raise HTTPException(status_code=500, detail="Failed to upload verification documents")
 
 
 @app.get("/verification/status", response_model=VerificationStatus)
@@ -951,9 +892,7 @@ async def get_verification_status(email: str):
 
 
 @app.put("/verification/admin/update-status")
-async def update_verification_status_admin(
-    user_email: str, update: VerificationStatusUpdate
-):
+async def update_verification_status_admin(user_email: str, update: VerificationStatusUpdate):
     """Update verification status (admin only - simplified for MVP)"""
     try:
         success = db.update_verification_status(
@@ -987,9 +926,7 @@ async def update_verification_status_admin(
         raise
     except Exception as e:
         print(f"Error updating verification status: {e}")
-        raise HTTPException(
-            status_code=500, detail="Failed to update verification status"
-        )
+        raise HTTPException(status_code=500, detail="Failed to update verification status")
 
 
 @app.get("/verification/admin/pending")
@@ -1000,9 +937,7 @@ async def get_pending_verifications_admin():
         return pending
     except Exception as e:
         print(f"Error getting pending verifications: {e}")
-        raise HTTPException(
-            status_code=500, detail="Failed to get pending verifications"
-        )
+        raise HTTPException(status_code=500, detail="Failed to get pending verifications")
 
 
 @app.get("/notifications")
@@ -1037,9 +972,7 @@ async def mark_notification_read(notification_id: int):
         return {"message": "Notification marked as read"}
     except Exception as e:
         print(f"Error marking notification as read: {e}")
-        raise HTTPException(
-            status_code=500, detail="Failed to mark notification as read"
-        )
+        raise HTTPException(status_code=500, detail="Failed to mark notification as read")
 
 
 # Rating endpoints
@@ -1057,9 +990,7 @@ async def create_user_rating(rating: CreateUserRating):
         return {"id": rating_id, "message": "User rating created successfully"}
     except Exception as e:
         if "UNIQUE constraint failed" in str(e):
-            raise HTTPException(
-                status_code=409, detail="You have already rated this user"
-            )
+            raise HTTPException(status_code=409, detail="You have already rated this user")
         print(f"Error creating user rating: {e}")
         raise HTTPException(status_code=500, detail="Failed to create user rating")
 
@@ -1078,9 +1009,7 @@ async def create_place_rating(rating: CreatePlaceRating):
         return {"id": rating_id, "message": "Place rating created successfully"}
     except Exception as e:
         if "UNIQUE constraint failed" in str(e):
-            raise HTTPException(
-                status_code=409, detail="You have already rated this place"
-            )
+            raise HTTPException(status_code=409, detail="You have already rated this place")
         print(f"Error creating place rating: {e}")
         raise HTTPException(status_code=500, detail="Failed to create place rating")
 
